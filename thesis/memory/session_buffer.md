@@ -5,7 +5,7 @@
 
 ---
 
-**Buffer count**: 3  
+**Buffer count**: 4  
 **Last flush**: 2026-02-21  
 **Flush threshold**: 5 entries
 
@@ -30,6 +30,12 @@
 - 3 Skills: `thesis-research`, `thesis-writer`, `thesis-log`
 - Zwei Protokoll-Dokumente: `protokoll_zeitlich.md` + `protokoll_thematisch.md`
 - Autonomes Buffer-System eingerichtet (dieses Dokument)
+
+### [4] 2026-02-21 — Autonomes Protokoll-System
+- `thesis-autonomy` Skill erstellt: läuft nach jedem Prompt automatisch
+- Session Buffer (`thesis/memory/session_buffer.md`) als Kurzzeitgedächtnis
+- Auto-Flush nach 5 Einträgen in alle drei Protokoll-Dokumente
+- Kein manuelles Triggern nötig — vollständig autonom
 
 ---
 
