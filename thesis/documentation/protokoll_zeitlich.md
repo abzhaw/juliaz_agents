@@ -57,3 +57,25 @@
 ---
 
 <!-- Neue Einträge unterhalb dieser Linie einfügen -->
+
+## 2026-02-21 — Session 4: OpenClaw Workspace-Erkundung
+
+**Kontext**: Vertieftes Verständnis der OpenClaw-Infrastruktur (keine Änderungen, nur Analyse).
+
+### Was wurde gemacht
+- Alle Bootstrap-Dateien gelesen: `AGENTS.md`, `SOUL.md`, `IDENTITY.md`, `USER.md`, `TOOLS.md`, `HEURISTICS.md`, `HEARTBEAT.md`, `BOOTSTRAP.md`
+- Livekonfiguration `~/.openclaw/openclaw.json` analysiert
+- Zwei lokale OpenClaw-Skills gesichtet: `openclaw-self-manage`, `openclaw-troubleshoot`
+- Workspace-Struktur kartiert: `~/.openclaw/workspace/` = Runtime-Workspace (Git-Repo)
+- Pairing-Status überprüft: ein CLI-Gerät gepaart (`devices/paired.json`)
+- Agent-Speicher: `~/.openclaw/memory/main.sqlite` (SQLite-basiert)
+
+### Erkenntnisse
+- **AGENTS.md** enthält das Selbstlern-System mit `HEURISTICS.md` (H-NNN Regeln, M-NNN Fehler)
+- **IDENTITY.md** & **USER.md** sind noch leer — Onboarding wurde noch nicht abgeschlossen
+- **BOOTSTRAP.md** ist noch vorhanden — der Agent hat seinen "Geburtsmoment" noch nicht vollständig durchlaufen
+- Das **Heartbeat-System** ist konfiguriert aber leer (`HEARTBEAT.md`) — Potenzial für Proaktivität
+- Kein `skills/`-Ordner im Laufzeit-Workspace — Skills konnten noch nicht aus dem Repo synchronisiert werden
+
+### Entscheidungen
+- Keine Änderungen vorgenommen (auf Wunsch des Benutzers: Understand-only Session)

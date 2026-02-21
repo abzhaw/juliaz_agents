@@ -5,7 +5,7 @@
 
 ---
 
-**Buffer count**: 4  
+**Buffer count**: 0  
 **Last flush**: 2026-02-21  
 **Flush threshold**: 5 entries
 
@@ -13,29 +13,7 @@
 
 ## Buffer Entries
 
-### [1] 2026-02-21 — Backend API & Julia Setup
-- Gebaut: REST Tasks API (Node.js, Express, TypeScript, Prisma, PostgreSQL, Docker, Vitest)
-- TDD-Ansatz: Tests vor Implementierung
-- Julia (Antigravity) als primärer Orchestrator eingerichtet
-- GitHub Repo: `abzhaw/juliaz_agents`
-
-### [2] 2026-02-21 — OpenClaw & Telegram
-- OpenClaw als Kommunikations-Sub-Agent konfiguriert
-- Telegram-Bot verbunden (Polling, Pairing-Sicherheit)
-- Skills: `openclaw-expert`, `openclaw-gateway`, `openclaw-troubleshoot`
-- Git-Identität konfiguriert
-
-### [3] 2026-02-21 — Thesis Agent & Protokoll-System
-- Thesis-Agent Workspace erstellt (`thesis/`)
-- 3 Skills: `thesis-research`, `thesis-writer`, `thesis-log`
-- Zwei Protokoll-Dokumente: `protokoll_zeitlich.md` + `protokoll_thematisch.md`
-- Autonomes Buffer-System eingerichtet (dieses Dokument)
-
-### [4] 2026-02-21 — Autonomes Protokoll-System
-- `thesis-autonomy` Skill erstellt: läuft nach jedem Prompt automatisch
-- Session Buffer (`thesis/memory/session_buffer.md`) als Kurzzeitgedächtnis
-- Auto-Flush nach 5 Einträgen in alle drei Protokoll-Dokumente
-- Kein manuelles Triggern nötig — vollständig autonom
+_(flushed 2026-02-21 — 5 entries written to protocol docs)_
 
 ---
 

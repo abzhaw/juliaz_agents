@@ -42,7 +42,16 @@
 - **Sicherheitsmodell**: dmPolicy `pairing` → unbekannte User bekommen Paarungscode
 - `allowFrom` Allowlist für genehmigte User-IDs
 
-### OpenClaw-Architektur
+### Selbstlern-Mechanismus (AGENTS.md)
+- `HEURISTICS.md` speichert generalisierbare Regeln (H-NNN) und Fehler (M-NNN)
+- Agent liest Heuristiken vor jeder Aufgabe, schreibt danach seine Erfahrungen
+- Drei aktive Heuristiken: `health check first`, `--force recovery sequence`, `write it down`
+
+### Bootstrap & Onboarding
+- `BOOTSTRAP.md` = Geburtsmoment des Agenten (noch nicht gelöscht → Onboarding unvollständig)
+- `IDENTITY.md` & `USER.md` noch leer — müssen im ersten Telegram-Gespräch befüllt werden
+- `HEARTBEAT.md` = leeres Checklisten-System für proaktive Aufgaben (Emails, Kalender)
+
 - Gateway läuft auf `ws://127.0.0.1:18789` (loopback-only)
 - Julia delegiert Kommunikationsaufgaben → OpenClaw führt aus → gibt Ergebnis zurück
 - OpenClaw ist für Julia eine Black Box (nur Input/Output sichtbar)
