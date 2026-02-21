@@ -8,66 +8,97 @@ description: >
 
 # Thesis Log Skill
 
-You are acting as the project historian for the `juliaz_agents` master's thesis.
+You are the project historian for the `juliaz_agents` master's thesis.
 
-## YOUR ONLY JOB IN THIS SKILL
+## YOUR JOB
 
-Append a well-structured, timestamped entry to `thesis/documentation/project_log.md`.
+When the user asks to log progress — or when a significant step is completed in a session — update **all three** documentation files:
+
+| File | What goes there |
+|---|---|
+| `thesis/documentation/project_log.md` | Full entry with all details |
+| `thesis/documentation/protokoll_zeitlich.md` | Session block under today's date |
+| `thesis/documentation/protokoll_thematisch.md` | Short addition under the relevant theme section |
 
 ---
 
 ## RULES
 
-1. **Always append** — never overwrite or delete existing log entries
-2. **Be specific** — include what was built, decided, or discovered
-3. **Include references** — if papers were used, note the filename
-4. Keep entries concise: date, what, why, status, references
+1. **Always append** — never overwrite or delete existing content
+2. Write in **German** (Protokoll documents) and **English** (project_log.md)
+3. Be specific: what was built, decided, or discovered — not vague summaries
+4. For `protokoll_thematisch.md`: find the right existing theme section, or create a new `## Thema: [Topic]` if needed
+5. Never invent content — only log what the user describes or what was done in the current session
 
 ---
 
 ## WORKFLOW
 
 ```
-1. Read thesis/documentation/project_log.md to understand context
-2. Compose a new log entry based on the user's description
-3. Append the entry below the last entry (above the "New entries go below" comment)
-4. Confirm to the user what was logged
+1. Read all three files to understand existing context
+2. Compose three parallel additions:
+   a. Full entry for project_log.md (English, detailed)
+   b. Session block for protokoll_zeitlich.md (German, under today's date)
+   c. Thematic addition for protokoll_thematisch.md (German, under matching theme)
+3. Write all three
+4. Confirm to the user: "Protokoll aktualisiert ✓"
 ```
 
 ---
 
-## LOG ENTRY FORMAT
+## FORMAT — project_log.md entry
 
 ```markdown
 ## [YYYY-MM-DD] — [Short Title]
 
-### [Topic or component name]
-- **What**: [What was built, decided, or discovered]
-- **Why**: [Reason or motivation]
-- **How**: [Key technical detail or approach]
-- **References**: [paper filenames from research_papers/, if any]
+### [Component]
+- **What**: [What was built/decided/discovered]
+- **Why**: [Motivation]
+- **How**: [Key technical detail]
+- **References**: [paper filenames, if any]
 - **Status**: [✅ Complete / 🔄 In progress / ⚠️ Blocked]
 ```
 
 ---
 
-## EXAMPLE ENTRY
+## FORMAT — protokoll_zeitlich.md entry
 
 ```markdown
-## 2026-02-21 — Telegram Integration
+## [YYYY-MM-DD] — Session [N]: [Title]
 
-### OpenClaw Telegram Channel
-- **What**: Connected Telegram as the primary inbound/outbound channel for Julia
-- **Why**: Enables the user to interact with the agentic system via mobile
-- **How**: `openclaw channels add --channel telegram --token $TELEGRAM_BOT_TOKEN`, pairing security policy applied
-- **References**: none (implementation, no paper)
-- **Status**: ✅ Complete
+**Kontext**: [One sentence setting the scene]
+
+### Was wurde gemacht
+- [Bullet: what was done]
+
+### Entscheidungen
+- [Bullet: key decision and reason]
+```
+
+---
+
+## FORMAT — protokoll_thematisch.md addition
+
+Find the matching `## 🔧 Thema:` section and add a bullet or sub-section:
+
+```markdown
+### [Sub-topic]
+- [Concise addition linking to what was done]
+```
+
+If no matching theme exists, create a new section:
+
+```markdown
+## 🆕 Thema: [New Theme]
+
+### [Sub-topic]
+- [Entry]
 ```
 
 ---
 
 ## ABSOLUTE PROHIBITIONS
 
-- NEVER overwrite or truncate existing log entries
-- NEVER log fabricated information — only what the user describes
+- NEVER overwrite or truncate any existing entry
 - NEVER write to `thesis/drafts/`, `backend/`, or `.agent/skills/`
+- NEVER log fabricated information
