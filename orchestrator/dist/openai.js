@@ -25,10 +25,18 @@ export async function generateReply(history) {
         }, { signal: controller.signal });
         clearTimeout(timeoutId);
         const reply = response.choices[0]?.message?.content;
+        const usage = response.usage;
         if (!reply) {
             throw new Error('Unexpected empty response from OpenAI');
         }
-        return reply;
+        return {
+            reply,
+            usage: {
+                prompt_tokens: usage?.prompt_tokens || 0,
+                completion_tokens: usage?.completion_tokens || 0,
+                total_tokens: usage?.total_tokens || 0,
+            }
+        };
     }
     catch (error) {
         console.error('[openai] API Error:', error);

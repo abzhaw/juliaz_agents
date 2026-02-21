@@ -21,8 +21,15 @@ export async function generateReply(history) {
         })),
     });
     const block = response.content[0];
+    const usage = response.usage;
     if (block?.type !== 'text') {
         throw new Error(`Unexpected response type from Claude: ${block?.type}`);
     }
-    return block.text;
+    return {
+        reply: block.text,
+        usage: {
+            input_tokens: usage.input_tokens,
+            output_tokens: usage.output_tokens
+        }
+    };
 }

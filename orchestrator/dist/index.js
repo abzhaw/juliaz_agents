@@ -7,8 +7,10 @@
  */
 import 'dotenv/config';
 import { fetchPendingMessages, checkHealth, postReply } from './bridge.js';
-import { generateReply } from './openai.js';
+import { generateReply } from './claude.js';
 import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
+import { maybeCapture } from './memory-keeper.js';
+import { startLetterScheduler } from './letter-scheduler.js';
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 5000);
 function log(msg, level = 'info') {
     const timestamp = new Date().toISOString();
@@ -20,11 +22,18 @@ function log(msg, level = 'info') {
         body: JSON.stringify({ level, source: 'orchestrator', message: msg })
     }).catch(() => { });
 }
+async function reportUsage(model, promptTokens, completionTokens) {
+    fetch('http://localhost:3000/usage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, promptTokens, completionTokens })
+    }).catch(() => { });
+}
 async function processMessage(chatId, messageId, username, text) {
     log(`Processing message from @${username} (${chatId}): "${text.slice(0, 80)}"`);
     // Handle special commands
     if (text.trim().toLowerCase() === '/start') {
-        await postReply(chatId, `Hey! I'm Julia 👋 — Raphael's AI agent. Ask me anything.`);
+        await postReply(chatId, `Hi — I'm Julia. I'm here whenever you want to talk. About anything.`);
         return;
     }
     if (text.trim().toLowerCase() === '/clear') {
@@ -35,9 +44,13 @@ async function processMessage(chatId, messageId, username, text) {
     }
     // Add the user message to history
     addUserMessage(chatId, text);
+    // Silently check if this message contains something worth preserving as a memory
+    maybeCapture(chatId, text); // fire-and-forget, never awaited
     // Get the full conversation history and generate a reply
     const history = getHistory(chatId);
-    const reply = await generateReply(history);
+    const { reply, usage } = await generateReply(history);
+    // Report usage
+    reportUsage('claude-3-5-sonnet-20241022', usage.input_tokens, usage.output_tokens);
     // Store the assistant's reply in history
     addAssistantMessage(chatId, reply);
     // Post the reply back to the bridge → OpenClaw delivers it
@@ -88,6 +101,8 @@ async function main() {
     }
     log(`✅ Bridge connected. Polling every ${POLL_INTERVAL}ms`);
     log('Julia is ready. Waiting for messages...\n');
+    // Start daily letter scheduler (runs independently every 30 minutes)
+    startLetterScheduler();
     // Start polling loop
     while (true) {
         try {

@@ -21,82 +21,77 @@
  *   BACKEND_URL            ← defaults to http://localhost:3000
  *   + Lob env vars (see lob.ts) for physical sending
  */
-
-import OpenAI from 'openai';
-import 'dotenv/config';
+import Anthropic from '@anthropic-ai/sdk';
 import { sendLetter } from './lob.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 const LETTER_HOUR = Number(process.env.LETTER_HOUR ?? 8);
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const SEED_FILE = path.join(DATA_DIR, 'daily-seed.md');
-
-function log(msg: string): void {
+function log(msg) {
     console.log(`[letter-scheduler] ${new Date().toISOString()} — ${msg}`);
 }
-
-function todayDateString(): string {
+function todayDateString() {
     return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 }
-
-async function letterExistsToday(): Promise<boolean> {
+async function letterExistsToday() {
     try {
         const res = await fetch(`${BACKEND}/letters`);
-        if (!res.ok) return false;
-        const letters = await res.json() as Array<{ createdAt: string }>;
+        if (!res.ok)
+            return false;
+        const letters = await res.json();
         const today = todayDateString();
         return letters.some(l => l.createdAt.slice(0, 10) === today);
-    } catch {
+    }
+    catch {
         return false;
     }
 }
-
-async function fetchRecentMemories(): Promise<string[]> {
+async function fetchRecentMemories() {
     try {
         const res = await fetch(`${BACKEND}/memories`);
-        if (!res.ok) return [];
-        const memories = await res.json() as Array<{ content: string; createdAt: string; category: string }>;
+        if (!res.ok)
+            return [];
+        const memories = await res.json();
         const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
         return memories
             .filter(m => new Date(m.createdAt).getTime() > sevenDaysAgo)
             .slice(0, 10)
             .map(m => `[${m.category}] ${m.content}`);
-    } catch {
+    }
+    catch {
         return [];
     }
 }
-
-function readAndArchiveSeed(): string | null {
-    if (!fs.existsSync(SEED_FILE)) return null;
+function readAndArchiveSeed() {
+    if (!fs.existsSync(SEED_FILE))
+        return null;
     try {
         const content = fs.readFileSync(SEED_FILE, 'utf-8').trim();
-        if (!content) return null;
+        if (!content)
+            return null;
         // Archive it so it's not used again
         const archiveName = `daily-seed-${todayDateString()}.used.md`;
         fs.renameSync(SEED_FILE, path.join(DATA_DIR, archiveName));
         log(`Seed file read and archived as ${archiveName}`);
         return content;
-    } catch {
+    }
+    catch {
         return null;
     }
 }
-
-async function generateLetter(seed: string | null, memories: string[]): Promise<string> {
+async function generateLetter(seed, memories) {
     const memoryContext = memories.length > 0
         ? `\nThings Julia has shared recently:\n${memories.map(m => `- ${m}`).join('\n')}\n`
         : '';
-
     const seedContext = seed
         ? `\nRaphael's note for today's letter (his own words to weave in naturally):\n${seed}\n`
         : '';
-
     const prompt = `You are helping Raphael write a daily letter to his dear friend Julia, who has cancer.
 
 The letter must feel like it genuinely comes from Raphael — warm, personal, from the heart. Not from an AI.
@@ -109,18 +104,17 @@ Write a heartfelt letter from Raphael to Julia.
 - End with love and encouragement
 - Close with "With love, Raphael"
 - No headers, no bullet points — just the letter`;
-
-    const response = await client.chat.completions.create({
-        model: 'gpt-4o',
+    const response = await client.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 500,
         messages: [{ role: 'user', content: prompt }]
     });
-
-    const reply = response.choices[0]?.message?.content;
-    if (!reply) throw new Error('Unexpected response from OpenAI');
-    return reply.trim();
+    const block = response.content[0];
+    if (block?.type !== 'text')
+        throw new Error('Unexpected response from Claude');
+    return block.text.trim();
 }
-
-async function saveLetterToBackend(content: string, status: string, lobId?: string): Promise<number> {
+async function saveLetterToBackend(content, status, lobId) {
     const res = await fetch(`${BACKEND}/letters`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -131,11 +125,10 @@ async function saveLetterToBackend(content: string, status: string, lobId?: stri
             sentAt: status === 'SENT' ? new Date().toISOString() : null
         })
     });
-    const letter = await res.json() as { id: number };
+    const letter = await res.json();
     return letter.id;
 }
-
-async function updateLetterStatus(id: number, status: string, lobId?: string): Promise<void> {
+async function updateLetterStatus(id, status, lobId) {
     await fetch(`${BACKEND}/letters/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -146,42 +139,37 @@ async function updateLetterStatus(id: number, status: string, lobId?: string): P
         })
     });
 }
-
-async function runDailyLetter(): Promise<void> {
+async function runDailyLetter() {
     const now = new Date();
-    if (now.getHours() < LETTER_HOUR) return; // too early
-
-    if (await letterExistsToday()) return; // already done today
-
+    if (now.getHours() < LETTER_HOUR)
+        return; // too early
+    if (await letterExistsToday())
+        return; // already done today
     log(`Generating today's letter...`);
-
     try {
         const [memories, seed] = await Promise.all([
             fetchRecentMemories(),
             Promise.resolve(readAndArchiveSeed())
         ]);
-
         const letterText = await generateLetter(seed, memories);
         log(`Letter generated (${letterText.length} chars)`);
-
         // Save as DRAFT first
         const letterId = await saveLetterToBackend(letterText, 'DRAFT');
-
         // Attempt physical sending via Lob
         const result = await sendLetter(letterText);
-
         if (result.sent && result.lobId) {
             await updateLetterStatus(letterId, 'SENT', result.lobId);
             log(`✅ Letter sent physically via Lob (${result.lobId})`);
-        } else {
+        }
+        else {
             log(`📝 Letter saved as DRAFT. ${result.reason}`);
         }
-    } catch (err) {
+    }
+    catch (err) {
         log(`Error generating letter: ${err}`);
     }
 }
-
-export function startLetterScheduler(): void {
+export function startLetterScheduler() {
     // Ensure data directory exists
     if (!fs.existsSync(DATA_DIR)) {
         fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -189,9 +177,7 @@ export function startLetterScheduler(): void {
         fs.writeFileSync(SEED_FILE, '# Daily Letter Seed\n\nWrite anything here and it will be woven into today\'s letter.\nThis file is archived after use and needs to be recreated for the next day.\n');
         log(`Created data directory and seed template at ${SEED_FILE}`);
     }
-
     log(`Started. Will check for daily letter every 30 minutes (sends at ${LETTER_HOUR}:00)`);
-
     // Check immediately on startup, then every 30 minutes
     runDailyLetter().catch(err => log(`Startup check error: ${err}`));
     setInterval(() => {

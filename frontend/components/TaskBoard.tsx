@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { CheckCircle2, Circle, Clock, Plus, Trash2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -17,18 +17,25 @@ export function TaskBoard() {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [newTitle, setNewTitle] = useState("");
 
-    const fetchTasks = async () => {
+    const fetchTasks = useCallback(async () => {
         try {
             const res = await fetch("http://localhost:3000/tasks");
             if (res.ok) setTasks(await res.json());
-        } catch (e) { }
-    };
+        } catch {
+            // Silently handle fetch errors
+        }
+    }, []);
 
     useEffect(() => {
-        fetchTasks();
-        const interval = setInterval(fetchTasks, 5000);
-        return () => clearInterval(interval);
-    }, []);
+        let mounted = true;
+        const load = () => { if (mounted) fetchTasks(); };
+        load();
+        const interval = setInterval(load, 5000);
+        return () => {
+            mounted = false;
+            clearInterval(interval);
+        };
+    }, [fetchTasks]);
 
     const addTask = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -43,7 +50,9 @@ export function TaskBoard() {
                 setNewTitle("");
                 fetchTasks();
             }
-        } catch (e) { }
+        } catch {
+            // Silently handle add errors
+        }
     };
 
     const toggleTask = async (id: number, completed: boolean) => {
@@ -54,14 +63,18 @@ export function TaskBoard() {
                 body: JSON.stringify({ completed: !completed })
             });
             fetchTasks();
-        } catch (e) { }
+        } catch {
+            // Silently handle toggle errors
+        }
     };
 
     const deleteTask = async (id: number) => {
         try {
             await fetch(`http://localhost:3000/tasks/${id}`, { method: "DELETE" });
             fetchTasks();
-        } catch (e) { }
+        } catch {
+            // Silently handle delete errors
+        }
     };
 
     return (

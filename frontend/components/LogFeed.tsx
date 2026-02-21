@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Terminal, Database } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -15,18 +15,28 @@ interface LogEntry {
 export function LogFeed() {
     const [logs, setLogs] = useState<LogEntry[]>([]);
 
-    const fetchLogs = async () => {
+    const fetchLogs = useCallback(async () => {
         try {
             const res = await fetch("http://localhost:3000/logs");
-            if (res.ok) setLogs(await res.json());
-        } catch (e) { }
-    };
+            if (res.ok) {
+                const data = await res.json();
+                setLogs(data);
+            }
+        } catch {
+            // Silently handle fetch errors
+        }
+    }, []);
 
     useEffect(() => {
-        fetchLogs();
-        const interval = setInterval(fetchLogs, 4000);
-        return () => clearInterval(interval);
-    }, []);
+        let mounted = true;
+        const load = () => { if (mounted) fetchLogs(); };
+        load();
+        const interval = setInterval(load, 4000);
+        return () => {
+            mounted = false;
+            clearInterval(interval);
+        };
+    }, [fetchLogs]);
 
     return (
         <div className="glass-panel p-4 flex flex-col h-full bg-black/40">

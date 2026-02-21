@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { Send, User, Bot } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface Message {
@@ -19,21 +19,28 @@ export function ChatWindow() {
     const [input, setInput] = useState("");
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const fetchMessages = async () => {
+    const fetchMessages = useCallback(async () => {
         try {
             const res = await fetch("http://localhost:3001/messages");
             if (res.ok) {
                 const data: Message[] = await res.json();
                 setMessages(data.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
             }
-        } catch (e) { }
-    };
+        } catch {
+            // Error handling left to UI (empty message state)
+        }
+    }, []);
 
     useEffect(() => {
-        fetchMessages();
-        const interval = setInterval(fetchMessages, 3000);
-        return () => clearInterval(interval);
-    }, []);
+        let mounted = true;
+        const load = () => { if (mounted) fetchMessages(); };
+        load();
+        const interval = setInterval(load, 3000);
+        return () => {
+            mounted = false;
+            clearInterval(interval);
+        };
+    }, [fetchMessages]);
 
     useEffect(() => {
         if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -57,7 +64,9 @@ export function ChatWindow() {
                 setInput("");
                 fetchMessages();
             }
-        } catch (e) { }
+        } catch {
+            // Error handling left to UI
+        }
     };
 
     return (
@@ -76,7 +85,7 @@ export function ChatWindow() {
                     ) : (
                         messages.map((msg) => (
                             <div key={msg.id} className="space-y-4">
-                                {/* User Message */}
+                                {/* Process user text if it exists (it's the incoming query) */}
                                 {msg.text && (
                                     <motion.div
                                         initial={{ opacity: 0, x: 20 }}
@@ -85,12 +94,12 @@ export function ChatWindow() {
                                     >
                                         <div className="bg-blue-600/20 border border-blue-500/20 p-3 rounded-2xl rounded-tr-none max-w-[80%] text-sm">
                                             {msg.text}
-                                            <div className="text-[10px] text-blue-400/60 mt-1 uppercase mt-2">Raphael • {new Date(msg.timestamp).toLocaleTimeString()}</div>
+                                            <div className="text-[10px] text-blue-400/60 mt-1 uppercase mt-2">{msg.username} • {new Date(msg.timestamp).toLocaleTimeString()}</div>
                                         </div>
                                     </motion.div>
                                 )}
 
-                                {/* Julia Reply */}
+                                {/* Process Julia reply if it has been generated */}
                                 {msg.reply && (
                                     <motion.div
                                         initial={{ opacity: 0, x: -20 }}
@@ -102,6 +111,15 @@ export function ChatWindow() {
                                             <div className="text-[10px] text-muted-foreground mt-1 uppercase mt-2">Julia • {new Date(msg.timestamp).toLocaleTimeString()}</div>
                                         </div>
                                     </motion.div>
+                                )}
+
+                                {/* Show status pulse if processing but no reply yet */}
+                                {msg.status === 'processing' && !msg.reply && (
+                                    <div className="flex justify-start">
+                                        <div className="text-[10px] text-blue-400/40 animate-pulse uppercase tracking-widest pl-2">
+                                            Julia is thinking...
+                                        </div>
+                                    </div>
                                 )}
                             </div>
                         ))

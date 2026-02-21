@@ -1,6 +1,7 @@
 /**
  * OpenAI API client — sends conversation history and returns a reply.
  */
+import 'dotenv/config';
 import OpenAI from 'openai';
 import { SYSTEM_PROMPT } from './prompt.js';
 
@@ -13,10 +14,16 @@ export interface Turn {
     content: string;
 }
 
+export interface Usage {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+}
+
 /**
  * Generate a reply from OpenAI given the full conversation history.
  */
-export async function generateReply(history: Turn[]): Promise<string> {
+export async function generateReply(history: Turn[]): Promise<{ reply: string; usage: Usage }> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
@@ -35,11 +42,20 @@ export async function generateReply(history: Turn[]): Promise<string> {
         clearTimeout(timeoutId);
 
         const reply = response.choices[0]?.message?.content;
+        const usage = response.usage;
+
         if (!reply) {
             throw new Error('Unexpected empty response from OpenAI');
         }
 
-        return reply;
+        return {
+            reply,
+            usage: {
+                prompt_tokens: usage?.prompt_tokens || 0,
+                completion_tokens: usage?.completion_tokens || 0,
+                total_tokens: usage?.total_tokens || 0,
+            }
+        };
     } catch (error: any) {
         console.error('[openai] API Error:', error);
         if (error.response) {

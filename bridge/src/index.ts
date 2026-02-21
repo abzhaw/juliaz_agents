@@ -193,10 +193,11 @@ app.get('/pending-reply/:chatId', async (req: Request, res: Response) => {
     const replied = messages.filter((m) => m.chatId === chatId && m.status === 'replied' && m.reply);
     if (replied.length === 0) { res.json({ reply: null }); return; }
     const latest = replied[replied.length - 1]!;
-    messages = messages.filter((m) => m.id !== latest.id);
+    // Don't delete — just mark as replied and keep for dashboard history
+    latest.status = 'replied';
     updateHeartbeat('openclaw');
     await saveQueue();
-    log(`Reply consumed for ${chatId}: "${(latest.reply ?? '').slice(0, 60)}"`);
+    log(`Reply served for ${chatId}: "${(latest.reply ?? '').slice(0, 60)}"`);
     res.json({ reply: latest.reply });
 });
 
@@ -207,8 +208,10 @@ app.post('/reply', async (req: Request, res: Response) => {
         res.status(400).json({ error: 'Valid chatId and text required' });
         return;
     }
-    const msg = messages.find(
-        (m) => m.chatId === String(chatId) && (m.status === 'pending' || m.status === 'processing') && (!messageId || m.id === String(messageId)),
+    const msgId = String(messageId || '');
+    const msg = messages.find((m) =>
+        (msgId && m.id === msgId) ||
+        (!msgId && m.chatId === String(chatId) && (m.status === 'pending' || m.status === 'processing'))
     );
     if (msg) {
         msg.status = 'replied';
@@ -230,9 +233,7 @@ app.post('/reply', async (req: Request, res: Response) => {
 // For Dashboard compatibility with old endpoints
 app.get('/queues/:target', (req, res) => {
     const { target } = req.params;
-    const items = target === 'julia'
-        ? messages.filter(m => m.status === 'pending')
-        : messages.filter(m => m.status === 'replied');
+    const items = messages.filter(m => (m.status === 'pending' || m.status === 'processing' || m.status === 'replied') && m.chatId === 'dashboard-v2');
     res.json({ target, size: items.length, messages: items });
 });
 
@@ -259,7 +260,11 @@ app.post('/inbound', async (req, res) => {
 
 // Debug — all messages
 app.get('/messages', (_req: Request, res: Response) => {
-    res.json(messages);
+    // Return all dashboard-v2 messages sorted by timestamp
+    const hist = messages
+        .filter(m => m.chatId === 'dashboard-v2')
+        .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    res.json(hist);
 });
 
 // Atomic poll and consume

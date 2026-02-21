@@ -8,7 +8,7 @@
 
 import 'dotenv/config';
 import { fetchPendingMessages, checkHealth, postReply } from './bridge.js';
-import { generateReply } from './claude.js';
+import { generateReply } from './openai.js';
 import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
 import { maybeCapture } from './memory-keeper.js';
 import { startLetterScheduler } from './letter-scheduler.js';
@@ -25,6 +25,14 @@ function log(msg: string, level: string = 'info'): void {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ level, source: 'orchestrator', message: msg })
     }).catch(() => { /* silent fail if backend is down */ });
+}
+
+async function reportUsage(model: string, promptTokens: number, completionTokens: number): Promise<void> {
+    fetch('http://localhost:3000/usage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model, promptTokens, completionTokens })
+    }).catch(() => { });
 }
 
 async function processMessage(chatId: string, messageId: string, username: string, text: string): Promise<void> {
@@ -51,13 +59,16 @@ async function processMessage(chatId: string, messageId: string, username: strin
 
     // Get the full conversation history and generate a reply
     const history = getHistory(chatId);
-    const reply = await generateReply(history);
+    const { reply, usage } = await generateReply(history);
+
+    // Report usage
+    reportUsage('gpt-4o', usage.prompt_tokens, usage.completion_tokens);
 
     // Store the assistant's reply in history
     addAssistantMessage(chatId, reply);
 
     // Post the reply back to the bridge → OpenClaw delivers it
-    await postReply(chatId, reply);
+    await postReply(chatId, reply, messageId);
 
     log(`Reply sent to ${chatId}: "${reply.slice(0, 80)}"`);
 }

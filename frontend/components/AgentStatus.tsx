@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Activity, Shield, Cpu, MessageSquare } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -19,24 +19,35 @@ interface BridgeHealth {
 
 export function AgentStatus() {
     const [health, setHealth] = useState<BridgeHealth | null>(null);
+    const [now, setNow] = useState(() => Date.now());
 
-    const fetchHealth = async () => {
+    const fetchHealth = useCallback(async () => {
         try {
             const res = await fetch("http://localhost:3001/health");
-            if (res.ok) setHealth(await res.json());
-        } catch (e) {
-            console.error("Health fetch failed", e);
+            if (res.ok) {
+                const data = await res.json();
+                setHealth(data);
+            }
+        } catch {
+            // Error logged silently in UI by null health state
         }
-    };
-
-    useEffect(() => {
-        fetchHealth();
-        const interval = setInterval(fetchHealth, 3000);
-        return () => clearInterval(interval);
     }, []);
 
-    const isJuliaAlive = health?.heartbeats.julia ? (Date.now() - new Date(health.heartbeats.julia).getTime() < 30000) : false;
-    const isOpenClawAlive = health?.heartbeats.openclaw ? (Date.now() - new Date(health.heartbeats.openclaw).getTime() < 30000) : false;
+    useEffect(() => {
+        let mounted = true;
+        const load = () => { if (mounted) fetchHealth(); };
+        load();
+        const fetchInterval = setInterval(load, 3000);
+        const timeInterval = setInterval(() => { if (mounted) setNow(Date.now()); }, 1000);
+        return () => {
+            mounted = false;
+            clearInterval(fetchInterval);
+            clearInterval(timeInterval);
+        };
+    }, [fetchHealth]);
+
+    const isJuliaAlive = health?.heartbeats.julia ? (now - new Date(health.heartbeats.julia).getTime() < 30000) : false;
+    const isOpenClawAlive = health?.heartbeats.openclaw ? (now - new Date(health.heartbeats.openclaw).getTime() < 30000) : false;
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

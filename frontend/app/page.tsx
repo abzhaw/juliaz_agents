@@ -2,7 +2,10 @@ import { AgentStatus } from "@/components/AgentStatus";
 import { ChatWindow } from "@/components/ChatWindow";
 import { TaskBoard } from "@/components/TaskBoard";
 import { LogFeed } from "@/components/LogFeed";
+import { TokenMonitor } from "@/components/TokenMonitor";
+import { ProjectUpdates } from "@/components/ProjectUpdates";
 import { Zap } from "lucide-react";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -19,10 +22,16 @@ export default function Home() {
           <p className="text-muted-foreground text-sm">Multi-agent command & control interface v2.0</p>
         </div>
 
-        <div className="flex items-center gap-4 bg-white/5 border border-white/5 px-4 py-2 rounded-2xl">
-          <div className="text-right">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Active Runtime</p>
-            <p className="text-xs font-mono">NODE_MAC_OS_ARM64</p>
+        <div className="flex items-center gap-4">
+          <Link href="/architecture" className="flex items-center gap-2 bg-white/5 hover:bg-white/10 border border-white/5 px-4 py-2 rounded-2xl transition-all">
+            <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+            <p className="text-xs font-bold uppercase tracking-widest">System Map</p>
+          </Link>
+          <div className="flex items-center gap-4 bg-white/5 border border-white/5 px-4 py-2 rounded-2xl">
+            <div className="text-right">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest">Active Runtime</p>
+              <p className="text-xs font-mono">NODE_MAC_OS_ARM64</p>
+            </div>
           </div>
         </div>
       </header>
@@ -30,7 +39,10 @@ export default function Home() {
       {/* Grid Layout */}
       <div className="space-y-8">
         {/* Top Row: Quick Stats */}
-        <AgentStatus />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          <AgentStatus />
+          <TokenMonitor />
+        </div>
 
         {/* Middle Row: Chat & Tasks */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -42,9 +54,14 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Bottom Row: Logs */}
-        <div className="h-[250px]">
-          <LogFeed />
+        {/* Bottom Row: Logs & News */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 h-[350px]">
+            <LogFeed />
+          </div>
+          <div className="lg:col-span-1 h-[350px]">
+            <ProjectUpdates />
+          </div>
         </div>
       </div>
 

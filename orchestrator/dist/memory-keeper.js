@@ -12,94 +12,72 @@
  *   WISH       — something she hopes for or wants
  *   REFLECTION — a thought or insight about life
  */
-
-import OpenAI from 'openai';
-import 'dotenv/config';
-
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+import Anthropic from '@anthropic-ai/sdk';
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
-
-interface ExtractResult {
-    save: boolean;
-    category?: string;
-    memory?: string;
-    usage?: {
-        promptTokens: number;
-        completionTokens: number;
-    };
-}
-
-async function extract(text: string): Promise<ExtractResult> {
-    const response = await client.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-            {
-                role: 'system',
-                content: `You decide if a message contains something worth preserving as a memory.
+async function extract(text) {
+    const response = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 200,
+        system: `You decide if a message contains something worth preserving as a memory.
 Save it if it contains: a story from her life (STORY), a meaningful feeling (FEELING), a specific memory or experience (MOMENT), a hope or wish (WISH), or a reflection on life (REFLECTION).
 Do NOT save casual chat, questions, small talk, or short replies.
 Respond with JSON only — no other text.
 If worth saving: {"save":true,"category":"STORY|FEELING|MOMENT|WISH|REFLECTION","memory":"distilled in 1-2 warm sentences"}
-If not: {"save":false}`
-            },
-            { role: 'user', content: text }
-        ],
-        response_format: { type: 'json_object' }
+If not: {"save":false}`,
+        messages: [{ role: 'user', content: text }]
     });
-
-    const reply = response.choices[0]?.message?.content;
+    const block = response.content[0];
     const usage = response.usage;
-
-    if (!reply) return { save: false };
-
+    if (block?.type !== 'text')
+        return { save: false };
     try {
-        const result = JSON.parse(reply.trim());
+        const result = JSON.parse(block.text.trim());
         return {
             ...result,
             usage: {
-                promptTokens: usage?.prompt_tokens || 0,
-                completionTokens: usage?.completion_tokens || 0
+                promptTokens: usage.input_tokens,
+                completionTokens: usage.output_tokens
             }
         };
-    } catch {
+    }
+    catch {
         return { save: false };
     }
 }
-
-async function reportUsage(model: string, promptTokens: number, completionTokens: number): Promise<void> {
+async function reportUsage(model, promptTokens, completionTokens) {
     await fetch(`${BACKEND}/usage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model, promptTokens, completionTokens })
     }).catch(() => { });
 }
-
-async function saveMemory(chatId: string, category: string, content: string, originalText: string): Promise<void> {
+async function saveMemory(chatId, category, content, originalText) {
     await fetch(`${BACKEND}/memories`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ chatId, category, content, originalText })
     });
 }
-
 /**
  * Call this after every user message. Runs silently in the background.
  * Errors are swallowed — this must never interrupt the main conversation.
  */
-export async function maybeCapture(chatId: string, userMessage: string): Promise<void> {
+export async function maybeCapture(chatId, userMessage) {
     // Skip very short messages — not worth analysing
-    if (userMessage.trim().length < 30) return;
-
+    if (userMessage.trim().length < 30)
+        return;
     try {
-        const result = await extract(userMessage) as any;
+        const result = await extract(userMessage);
         if (result.usage) {
-            await reportUsage('gpt-4o-mini', result.usage.promptTokens, result.usage.completionTokens);
+            await reportUsage('claude-haiku-4-5-20251001', result.usage.promptTokens, result.usage.completionTokens);
         }
         if (result.save && result.category && result.memory) {
             await saveMemory(chatId, result.category, result.memory, userMessage);
             console.log(`[memory-keeper] Captured ${result.category}: "${result.memory.slice(0, 60)}..."`);
         }
-    } catch (err) {
+    }
+    catch (err) {
         // Silent fail — memory capture must never crash the main loop
         console.error('[memory-keeper] Error (non-fatal):', err);
     }

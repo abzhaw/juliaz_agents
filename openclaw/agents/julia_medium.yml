@@ -1,0 +1,37 @@
+name: julia_medium
+version: 1
+kind: mcp-agent
+
+metadata:
+  description: Ambient link to Julia (Antigravity) focused on Medium/digest work.
+  owner: openclaw
+
+transport:
+  type: mcp
+  endpoint: http://127.0.0.1:3001
+  options:
+    connectTimeoutMs: 2000
+    requestTimeoutMs: 20000
+    retries: 1
+
+skills:
+  required:
+    - julia-bridge/send
+    - julia-bridge/receive
+    - julia-bridge/health
+
+behaviors:
+  preSend:
+    - skill: julia-bridge/health
+      expect:
+        status: ok
+  retry:
+    attempts: 1
+    delayMs: 2000
+  message:
+    requireCorrelationId: true
+    correlationIdPrefix: medium-
+
+logging:
+  level: info
+  logFile: logs/julia-medium.log

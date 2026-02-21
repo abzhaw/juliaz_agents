@@ -49,3 +49,21 @@ model Letter {
   sentAt    DateTime?
   createdAt DateTime  @default(now())
 }
+// Token usage tracking per model
+model Usage {
+  id               Int      @id @default(autoincrement())
+  model            String   // e.g. "gpt-4o", "claude-3-5-sonnet-20241022"
+  promptTokens     Int
+  completionTokens Int
+  totalTokens      Int
+  timestamp        DateTime @default(now())
+}
+
+// Project progress updates (Blog/News)
+model Update {
+  id        Int      @id @default(autoincrement())
+  title     String
+  content   String
+  type      String   // PROGRESS | ANNOUNCEMENT | MILESTONE
+  timestamp DateTime @default(now())
+}
