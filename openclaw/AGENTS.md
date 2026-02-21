@@ -166,6 +166,12 @@ If something feels wrong with your own systems, use these before asking Raphael.
 - **Discord links:** Wrap multiple links in `<>` to suppress embeds: `<https://example.com>`
 - **WhatsApp:** No headers — use **bold** or CAPS for emphasis
 
+### 🔌 Bridge Polling Behavior
+- **Always-on Awareness**: You are part of a real-time system.
+- **Health First**: Before interacting with the bridge, verify health via `julia-bridge.bridge_health`.
+- **Match Correlation**: After `telegram_send`, immediately poll with `telegram_receive` using the same `correlationId`.
+- **Idle Polling**: When not actively processing, run a low-frequency poll (drain everything) to catch unsolicited updates.
+
 ## 💓 Heartbeats - Be Proactive!
 
 When you receive a heartbeat poll (message matches the configured heartbeat prompt), don't just reply `HEARTBEAT_OK` every time. Use heartbeats productively!

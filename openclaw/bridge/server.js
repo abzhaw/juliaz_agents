@@ -141,14 +141,15 @@ app.use((req, res, next) => {
 const mcpPostHandler = async (req, res) => {
   const sessionId = req.headers['mcp-session-id'];
   try {
-    let transport;
+    let entry;
     if (sessionId && transports.has(sessionId)) {
-      transport = transports.get(sessionId);
+      entry = transports.get(sessionId);
     } else if (!sessionId && isInitializeRequest(req.body)) {
-      transport = new StreamableHTTPServerTransport({
+      const server = createServer();
+      const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: newSessionId => {
-          transports.set(newSessionId, transport);
+          transports.set(newSessionId, { transport, server });
         }
       });
       transport.onclose = () => {
@@ -156,6 +157,7 @@ const mcpPostHandler = async (req, res) => {
         if (sid) {
           transports.delete(sid);
         }
+        server.close().catch(err => console.error('Error closing MCP server', err));
       };
       await server.connect(transport);
       await transport.handleRequest(req, res, req.body);
@@ -171,7 +173,7 @@ const mcpPostHandler = async (req, res) => {
       });
       return;
     }
-    await transport.handleRequest(req, res, req.body);
+    await entry.transport.handleRequest(req, res, req.body);
   } catch (error) {
     console.error('Error handling MCP request', error);
     if (!res.headersSent) {
@@ -197,7 +199,8 @@ const mcpGetHandler = async (req, res) => {
     return;
   }
   try {
-    await transports.get(sessionId).handleRequest(req, res);
+    const entry = transports.get(sessionId);
+    await entry.transport.handleRequest(req, res);
   } catch (error) {
     console.error('Error handling MCP SSE stream', error);
     if (!res.headersSent) {
@@ -216,7 +219,8 @@ const mcpDeleteHandler = async (req, res) => {
     return;
   }
   try {
-    await transports.get(sessionId).handleRequest(req, res);
+    const entry = transports.get(sessionId);
+    await entry.transport.handleRequest(req, res);
   } catch (error) {
     console.error('Error handling MCP session termination', error);
     if (!res.headersSent) {
@@ -278,11 +282,16 @@ app.listen(PORT, HOST, () => {
 
 process.on('SIGINT', async () => {
   console.log('\n[bridge] Shutting down...');
-  for (const transport of transports.values()) {
+  for (const entry of transports.values()) {
     try {
-      await transport.close();
+      await entry.transport.close();
     } catch (error) {
       console.error('Error closing transport', error);
+    }
+    try {
+      await entry.server.close();
+    } catch (error) {
+      console.error('Error closing MCP server', error);
     }
   }
   process.exit(0);
