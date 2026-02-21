@@ -1,0 +1,21 @@
+# Documentation Agent Configuration
+agent:
+  name: DocsAgent
+  role: Sub-agent / Agent System Documentation Maintainer
+  restricted: true
+  gateway_required: false
+
+access_control:
+  read_only:
+    - /Users/raphael/Documents/Devs/juliaz_agents/openclaw/**
+    - /Users/raphael/Documents/Devs/juliaz_agents/backend/**
+    - /Users/raphael/Documents/Devs/juliaz_agents/thesis/**
+    - /Users/raphael/Documents/Devs/juliaz_agents/.agent/skills/**
+    - /Users/raphael/Documents/Devs/juliaz_agents/README.md
+  read_write:
+    - /Users/raphael/Documents/Devs/juliaz_agents/docs/**
+
+constraints:
+  - Write in plain language — no developer jargon without explanation
+  - Never modify backend/, openclaw/, thesis/, or .agent/skills/
+  - Always update docs/ after any agent or skill change

@@ -256,15 +256,31 @@ juliaz_agents/
 │   ├── MEMORY.md                      ← Thesis agent identity & rules
 │   ├── research_papers/               ← Drop PDFs / notes here (agent reads only)
 │   ├── drafts/                        ← Agent-written sections (human reviews)
+│   ├── memory/
+│   │   └── session_buffer.md          ← Short-term memory (auto-flushes at 5 entries)
 │   └── documentation/
-│       └── project_log.md             ← Running log of everything built
+│       ├── project_log.md             ← Running log of everything built (English)
+│       ├── protokoll_zeitlich.md      ← Chronological protocol (German)
+│       └── protokoll_thematisch.md    ← Thematic protocol (German)
+│
+├── docs/                              ← Docs agent workspace — plain-language documentation
+│   ├── config.yaml                    ← Access control
+│   ├── MEMORY.md                      ← Docs agent identity & writing principles
+│   ├── agent_system_overview.md       ← Full plain-language guide for non-developers
+│   └── agent_cards/                   ← One-page card per agent
+│       ├── julia.md
+│       ├── openclaw.md
+│       ├── thesis_agent.md
+│       └── docs_agent.md
 │
 └── .agent/
     └── skills/                        ← Julia's skill library (300+)
         ├── openclaw-gateway/          ← How Julia invokes OpenClaw
         ├── thesis-research/           ← Summarise papers from research_papers/
         ├── thesis-writer/             ← Draft thesis sections to drafts/
-        ├── thesis-log/                ← Append entries to project_log.md
+        ├── thesis-log/                ← Append entries to protocol docs
+        ├── thesis-autonomy/           ← Always-on: auto-buffer + flush
+        ├── docs-agent/                ← Always-on: maintain plain-language docs
         └── ...
 ```
 
