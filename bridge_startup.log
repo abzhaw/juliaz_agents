@@ -14,3 +14,4 @@
 [bridge] [REST] Reply stored for dashboard-v2: "It looks like you're trying to set up or troubleshoot a Claw"
 [bridge] [REST] Reply stored for dashboard-v2: "Hello! Yes, I'm here. How can I assist you today?"
 [bridge] Incoming from Raphael (dashboard-v2): "Julia, quick test - what is 2+2?"
+[bridge] Incoming from Raphael (dashboard-v2): "what is 2+2?"
