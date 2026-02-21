@@ -1,180 +1,188 @@
-# The Agent System — A Plain-Language Guide
+# The Julia System — A Plain-Language Guide
 
-> **Who this is for**: Anyone who wants to understand what this project does, without needing to be a software developer.  
-> **Maintained by**: The Docs Agent — updated automatically whenever the system changes.  
+> **Who this is for**: Anyone who wants to understand this project without needing to be a software developer.  
+> **Maintained by**: The Docs Agent — updated whenever the system changes.  
 > **Last updated**: 2026-02-21
 
 ---
 
 ## What is this project?
 
-This project is called **Julia's Agent System** (`juliaz_agents`). It is a collection of AI assistants — called **agents** — that work together like a small team of specialists.
+This project is called **Julia's Agent System** (`juliaz_agents`). It has two layers:
 
-Think of it like a small company:
-- There is a **manager** who receives requests and decides who handles them.
-- There are **specialists** who each own one area of work.
-- They cooperate, pass tasks to each other, and report back.
+1. **Antigravity** — the AI assistant embedded in the developer's code editor, responsible for *building* Julia
+2. **Julia** — the multi-agent platform being built, made up of several cooperating components
 
-The manager is called **Julia**. The specialists are called **OpenClaw**, the **Thesis Agent**, and the **Docs Agent** (who writes this document).
+Think of it like a construction project:
+- **Antigravity** is the architect and construction crew
+- **Julia** is the building being constructed
 
 ---
 
 ## The Big Picture
 
 ```
-You (the user)
+Developer (Raphael)
     │
-    │  give goals and instructions
+    │  gives goals and instructions
     ▼
-Julia  ─────────────────────────────  The Manager
-    │                                 Breaks down goals, decides who does what
+Antigravity  ─────────────────────  The Builder (lives in the IDE)
+    │                               Writes code, configures systems,
+    │                               diagnoses problems, ships Julia
     │
-    ├──▶  OpenClaw ─────────────────  The Messenger
-    │         Sends and receives messages on apps like Telegram
+    │  builds and manages ↓
+    ▼
+Julia (the product being built)
     │
-    ├──▶  Thesis Agent ─────────────  The Researcher & Writer
-    │         Documents the project for the master's thesis
+    ├──▶  OpenClaw  ─────────────── The Messenger
+    │         Telegram, WhatsApp, Slack, Discord
     │
-    └──▶  Docs Agent ────────────────  The Explainer (that's this one)
-              Keeps documentation up to date in plain language
+    ├──▶  Bridge  ──────────────── The Glue
+    │         MCP server connecting OpenClaw to the rest
+    │
+    └──▶  Backend API  ───────────  The Application
+               REST API running in Docker
 ```
 
 ---
 
-## The Agents, One by One
+## The Components, One by One
 
-### 🧠 Julia — The Manager
+### 🔧 Antigravity — The Builder
 
-Julia is the **central brain**. When you give her a goal, she breaks it down into smaller tasks and decides which specialist should handle each one. She does not send messages herself, and she does not research topics herself — she delegates those things to the right agent.
+Antigravity is the AI agent living inside the developer's code editor (IDE). It is *not* Julia — it is the tool used to build Julia. When the developer opens this workspace, Antigravity is active and ready to write code, debug problems, and configure systems.
 
-**Analogy**: Julia is like a project manager at a company. The project manager does not do all the work themselves, but they make sure the right person does each task, and they keep track of the big picture.
+**What Antigravity does:**
+- Writes and debugs code across all Julia components
+- Configures the bridge, OpenClaw, and backend
+- Keeps the architecture clean and the components clearly separated
+- Diagnoses problems and fixes them
 
-**What Julia can do:**
-- Receive your goals and instructions
-- Break complex goals into smaller tasks
-- Decide which agent handles each task
-- Build and manage the backend software (the Task API — see below)
-- Learn new abilities by reading "skill files" (instruction documents called SKILL.md)
-
-**What Julia cannot do:**
-- Send messages to Telegram or WhatsApp (that's OpenClaw's job)
-- Write thesis documentation without being asked
+**What Antigravity is NOT:**
+- Antigravity is not Julia
+- Antigravity is not a communication agent
+- Antigravity does not send Telegram or WhatsApp messages
 
 ---
 
 ### 📡 OpenClaw — The Messenger
 
-OpenClaw is the system's **communication layer**. It connects Julia to the outside world — apps like Telegram, WhatsApp, Slack, and Discord. When you send Julia a message via Telegram, OpenClaw receives it first, then passes it to Julia. When Julia wants to reply, she gives the reply to OpenClaw, who sends it back.
+OpenClaw is Julia's **communication layer**. It connects Julia to external messaging apps — Telegram, WhatsApp, Slack, Discord. When you send a message via Telegram, OpenClaw receives it first, then forwards it through the bridge so the system can respond.
 
-**Analogy**: OpenClaw is like a telephone switchboard operator. When a call comes in, the operator receives it and routes it to the right person. When someone needs to make a call, the operator handles the technical side of placing it.
+**Analogy**: OpenClaw is like a telephone switchboard operator. Calls come in, the operator routes them. Calls go out, the operator places them.
 
 **What OpenClaw can do:**
 - Receive messages from Telegram (and other apps)
-- Send Julia's replies back to you via Telegram
-- Remember past conversations with each contact
-- Keep a log of all communication activity
-- Check its own health and restart itself if something goes wrong
+- Forward messages to the bridge for processing
+- Deliver replies back to users
+- Remember past conversations per contact
+- Check its own health and log activity
 
 **What OpenClaw cannot do:**
-- Make decisions about what to reply — it relays Julia's words, it doesn't invent its own
-- Read your files, write code, or change the system
+- Make decisions or generate intelligent replies on its own — it relays and routes
+- Write code, modify the backend, or change the system
 
 **Current setup:**
 - Telegram is connected ✅
-- Security: only approved users can talk to the bot (pairing system)
-- The bot runs locally on your computer, not on a remote server
+- Runs natively on the Mac (not in Docker)
+- Security: only approved users can talk to the bot
 
 ---
 
-### 📚 Thesis Agent — The Researcher & Writer
+### 🔌 Bridge — The Glue (MCP Server)
 
-The Thesis Agent helps document this project for a **master's thesis**. It has three abilities: researching, writing, and logging.
+The bridge is a small Node.js server (`./bridge/`, port 3001) that connects OpenClaw to the orchestration layer. It exposes:
+- A **REST API** that OpenClaw posts messages to (`POST /incoming`)
+- An **MCP endpoint** that the orchestration layer can call tools on (`/mcp`)
+- A **polling endpoint** that OpenClaw checks for replies (`GET /pending-reply/:chatId`)
 
-**Analogy**: The Thesis Agent is like a research assistant. You hand them a folder of academic papers to read. They read those papers, summarise the relevant findings, and help you draft sections of your thesis. They never invent citations — they only use what you give them.
+**Analogy**: The bridge is like a shared whiteboard. OpenClaw writes incoming messages on the whiteboard. The orchestration picks them up, processes them, and writes replies back. OpenClaw then reads the replies and delivers them.
 
-**What the Thesis Agent can do:**
-- Read and summarise research papers (from `thesis/research_papers/` only)
-- Draft thesis sections and save them for your review
-- Log every milestone in the project in two formats:  
-  — **By date** (what happened on which day)  
-  — **By theme** (how topics evolved over time)
+**What the bridge does:**
+- Buffers messages between OpenClaw and the processing layer
+- Exposes MCP tools: `telegram_get_pending_messages`, `telegram_send_reply`, `telegram_bridge_status`
+- Persists the message queue to disk (`data/queue.json`)
 
-**What the Thesis Agent cannot do:**
-- Use research from outside the designated folder (strict rule to prevent made-up citations)
-- Publish drafts automatically — you review and approve first
-- Change the software or communication setup
-
-**How it stays up to date:**
-After every 5 interactions with Julia, the Thesis Agent automatically saves a summary to the protocol documents. No manual trigger needed.
+**Current state:**
+- ⚠️ The bridge is currently **stopped** — it needs to be started
 
 ---
 
-### 📄 Docs Agent — The Explainer
+### 🖥️ Backend API — The Application
 
-The Docs Agent is **this documentation system** — the one writing these words. Its job is to keep a clear, always-updated explanation of the entire system in plain language.
+The backend (`./backend/`) is a REST API for task management. This is the *application Julia is building* — the deliverable product. It runs in Docker and is fully separate from the agent infrastructure.
 
-**Analogy**: The Docs Agent is like a company's communications officer who writes the internal handbook. Every time a new team member joins or a team's role changes, the handbook is updated.
+**Technology:**
+- Node.js + Express + TypeScript — the HTTP server
+- PostgreSQL — the database
+- Prisma — database access layer
+- Docker Compose — container orchestration
 
-**What the Docs Agent can do:**
-- Update this overview document when the system changes
-- Write one-page "agent cards" explaining each agent simply
-- Read any agent's configuration to understand what changed
+**What it does:**
+- Create, list, update, and delete tasks
+- Expose a `/health` endpoint
 
-**What the Docs Agent cannot do:**
-- Change how agents work — it only describes them
-- Write code or send messages
-
----
-
-## The Backend — The Product Being Built
-
-Alongside the agent system, Julia is building a **Task Management API**. An API (Application Programming Interface) is a kind of service that other software can talk to — like asking a waiter to bring you food in a restaurant.
-
-This API allows software to:
-- Create tasks (to-do items)
-- List all existing tasks
-- Update tasks (mark as complete, change the title)
-- Delete tasks
-
-**Technology used** (simplified):
-- **Node.js + TypeScript**: the programming language and runtime
-- **PostgreSQL**: a database (think of it as a very organised spreadsheet that stores the tasks)
-- **Docker**: a technology that packages the software so it runs the same way everywhere
-- **Prisma**: a tool that makes it easy to talk to the database
+**How to start it:**
+```bash
+cd backend && docker compose up -d
+```
 
 ---
 
-## How It Was Built — The Philosophy
+## What Runs Where
 
-### Test-First Development
-Every feature was tested before being built. A test in software is like a checklist: "does this feature do what it should?" Tests were written first (describing the desired behaviour), then the code was written to pass those tests. This approach is called **TDD** (Test-Driven Development).
-
-### Specialisation and Boundaries
-Each agent owns exactly one area. Julia handles orchestration. OpenClaw handles communication. The Thesis Agent handles documentation. They never step on each other's toes. This is intentional — it makes the system easier to understand, change, and debug.
-
-### Security by Design
-- The system only runs on your local machine (not exposed to the internet)
-- The Telegram bot only responds to approved users
-- No secrets or API keys are stored in the shared code repository
+| Component | Location | Runs in Docker? |
+|---|---|---|
+| Antigravity | Inside the IDE | ❌ No — lives in the editor |
+| OpenClaw | Mac, local CLI | ❌ No — must run native |
+| Bridge | Mac, port 3001 | ❌ No — tiny local server |
+| Backend API | Docker | ✅ Yes — API + PostgreSQL |
 
 ---
 
-## Glossary — Technical Terms Explained
+## How a Message Flows Through the System
+
+```
+1. You send a Telegram message
+2. OpenClaw receives it on its gateway
+3. OpenClaw uses the julia-relay skill:
+      → POST http://localhost:3001/incoming
+4. Bridge stores the message in its queue
+5. Orchestration calls MCP tool: telegram_get_pending_messages
+6. Orchestration processes the message and replies via:
+      → MCP tool: telegram_send_reply
+7. Bridge stores the reply
+8. OpenClaw polls GET /pending-reply/:chatId → gets the reply
+9. OpenClaw sends the reply back to you on Telegram
+```
+
+---
+
+## Current Known Issues
+
+| Issue | Status | Fix |
+|---|---|---|
+| Bridge is stopped | ⚠️ Active | `cd bridge && npm run dev` |
+| MCP tools not registered | ⚠️ Active | Add bridge URL to Antigravity MCP config |
+
+---
+
+## Glossary
 
 | Term | Plain-language explanation |
 |---|---|
 | **Agent** | An AI assistant with a specific job and set of abilities |
+| **Antigravity** | The IDE AI that builds Julia — not the same thing as Julia |
+| **Julia** | The multi-agent system being built — the product |
 | **Skill** | A document that teaches an agent how to do a specific task |
-| **API** | A service that software programs can talk to, like a phone number for a function |
-| **Gateway** | A central hub that routes incoming and outgoing messages |
-| **Telegram** | A messaging app (like WhatsApp) used to talk to the system |
+| **MCP** | Model Context Protocol — a standard way for AI tools to expose capabilities |
+| **Bridge** | The small server connecting OpenClaw to the rest of Julia |
+| **API** | A service that software programs can talk to |
 | **Docker** | A tool that packages software so it runs consistently on any machine |
-| **PostgreSQL** | A database — a system for storing and retrieving structured data |
-| **TDD** | Test-Driven Development — writing tests before writing the code |
-| **Repository (Repo)** | A folder where all the code and files for a project are stored, with version history |
-| **Commit** | A saved snapshot of the project at a point in time |
+| **PostgreSQL** | A database for storing structured data |
 | **WebSocket** | A way for two programs to stay connected and talk in real time |
+| **Gateway** | OpenClaw's central hub that routes all channel messages |
 
 ---
 
-*This document is maintained by the Docs Agent and updated automatically. Last updated: 2026-02-21.*
+*This document is maintained by the Docs Agent and updated when the system changes. Last updated: 2026-02-21.*
