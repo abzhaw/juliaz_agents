@@ -21,6 +21,32 @@ app.get('/tasks', async (req, res) => {
     res.json(tasks);
 });
 
+app.post('/tasks', async (req, res) => {
+    const { title } = req.body;
+    const task = await prisma.task.create({
+        data: { title }
+    });
+    res.status(201).json(task);
+});
+
+app.patch('/tasks/:id', async (req, res) => {
+    const { id } = req.params;
+    const { title, completed } = req.body;
+    const task = await prisma.task.update({
+        where: { id: parseInt(id) },
+        data: { title, completed }
+    });
+    res.json(task);
+});
+
+app.delete('/tasks/:id', async (req, res) => {
+    const { id } = req.params;
+    await prisma.task.delete({
+        where: { id: parseInt(id) }
+    });
+    res.status(204).send();
+});
+
 app.get('/', (req, res) => {
     res.send('Backend is running!');
 });

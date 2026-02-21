@@ -38,6 +38,7 @@
     "skipLibCheck": true
   },
   "exclude": [
-    "prisma.config.ts"
+    "prisma.config.ts",
+    "tests"
   ]
 }

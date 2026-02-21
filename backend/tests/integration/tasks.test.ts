@@ -27,4 +27,32 @@ describe('Tasks API Integration Tests', () => {
         expect(res.body.completed).toBe(false);
         expect(res.body.id).toBeTypeOf('number');
     });
+
+    it('should update a task on PATCH /tasks/:id', async () => {
+        const createRes = await request(app)
+            .post('/tasks')
+            .send({ title: 'Task to Update' });
+
+        const taskId = createRes.body.id;
+        const res = await request(app)
+            .patch(`/tasks/${taskId}`)
+            .send({ completed: true });
+
+        expect(res.status).toBe(200);
+        expect(res.body.completed).toBe(true);
+    });
+
+    it('should delete a task on DELETE /tasks/:id', async () => {
+        const createRes = await request(app)
+            .post('/tasks')
+            .send({ title: 'Task to Delete' });
+
+        const taskId = createRes.body.id;
+        const res = await request(app).delete(`/tasks/${taskId}`);
+
+        expect(res.status).toBe(204);
+
+        const checkRes = await request(app).get('/tasks');
+        expect(checkRes.body.some((t: any) => t.id === taskId)).toBe(false);
+    });
 });
