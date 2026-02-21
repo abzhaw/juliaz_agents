@@ -7,7 +7,7 @@
  */
 import 'dotenv/config';
 import { fetchPendingMessages, checkHealth, postReply } from './bridge.js';
-import { generateReply } from './claude.js';
+import { generateReply } from './openai.js';
 import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
 import { maybeCapture } from './memory-keeper.js';
 import { startLetterScheduler } from './letter-scheduler.js';
@@ -50,11 +50,11 @@ async function processMessage(chatId, messageId, username, text) {
     const history = getHistory(chatId);
     const { reply, usage } = await generateReply(history);
     // Report usage
-    reportUsage('claude-3-5-sonnet-20241022', usage.input_tokens, usage.output_tokens);
+    reportUsage('gpt-4o', usage.prompt_tokens, usage.completion_tokens);
     // Store the assistant's reply in history
     addAssistantMessage(chatId, reply);
     // Post the reply back to the bridge → OpenClaw delivers it
-    await postReply(chatId, reply);
+    await postReply(chatId, reply, messageId);
     log(`Reply sent to ${chatId}: "${reply.slice(0, 80)}"`);
 }
 async function poll() {

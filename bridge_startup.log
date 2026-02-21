@@ -2,25 +2,15 @@
 > julia-openclaw-bridge@1.0.0 dev
 > tsx src/index.ts
 
-[bridge] Loaded 10 messages from queue
-node:events:486
-      throw er; // Unhandled 'error' event
-      ^
-
-Error: listen EADDRINUSE: address already in use :::3001
-    at Server.setupListenHandle [as _listen2] (node:net:2016:16)
-    at listenInCluster (node:net:2073:12)
-    at Server.listen (node:net:2178:7)
-    at app.listen (/Users/raphael/Documents/Devs/juliaz_agents/bridge/node_modules/express/lib/application.js:635:24)
-    at <anonymous> (/Users/raphael/Documents/Devs/juliaz_agents/bridge/src/index.ts:393:5)
-Emitted 'error' event on Server instance at:
-    at emitErrorNT (node:net:2052:8)
-    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3001
-}
-
-Node.js v25.6.1
+[bridge] Loaded 1 messages from queue
+[bridge] Bridge running on http://localhost:3001
+[bridge]   MCP endpoint:   http://localhost:3001/mcp
+[bridge]   POST /incoming  ← OpenClaw sends Telegram messages here
+[bridge]   GET  /pending-reply/:chatId ← OpenClaw polls for replies
+[bridge] Incoming from Raphael (dashboard-v2): "tel openclaw"
+[bridge] Incoming from Raphael (dashboard-v2): "etting started If you see a red ! badge on the extension ico"
+[bridge] Incoming from Raphael (dashboard-v2): "hello, are you there?"
+[bridge] [REST] Reply stored for dashboard-v2: "I don't have specific information on "openclaw." Could you g"
+[bridge] [REST] Reply stored for dashboard-v2: "It looks like you're trying to set up or troubleshoot a Claw"
+[bridge] [REST] Reply stored for dashboard-v2: "Hello! Yes, I'm here. How can I assist you today?"
+[bridge] Incoming from Raphael (dashboard-v2): "Julia, quick test - what is 2+2?"

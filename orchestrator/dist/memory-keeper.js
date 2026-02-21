@@ -12,32 +12,38 @@
  *   WISH       — something she hopes for or wants
  *   REFLECTION — a thought or insight about life
  */
-import Anthropic from '@anthropic-ai/sdk';
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+import OpenAI from 'openai';
+import 'dotenv/config';
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 async function extract(text) {
-    const response = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
-        system: `You decide if a message contains something worth preserving as a memory.
+    const response = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+            {
+                role: 'system',
+                content: `You decide if a message contains something worth preserving as a memory.
 Save it if it contains: a story from her life (STORY), a meaningful feeling (FEELING), a specific memory or experience (MOMENT), a hope or wish (WISH), or a reflection on life (REFLECTION).
 Do NOT save casual chat, questions, small talk, or short replies.
 Respond with JSON only — no other text.
 If worth saving: {"save":true,"category":"STORY|FEELING|MOMENT|WISH|REFLECTION","memory":"distilled in 1-2 warm sentences"}
-If not: {"save":false}`,
-        messages: [{ role: 'user', content: text }]
+If not: {"save":false}`
+            },
+            { role: 'user', content: text }
+        ],
+        response_format: { type: 'json_object' }
     });
-    const block = response.content[0];
+    const reply = response.choices[0]?.message?.content;
     const usage = response.usage;
-    if (block?.type !== 'text')
+    if (!reply)
         return { save: false };
     try {
-        const result = JSON.parse(block.text.trim());
+        const result = JSON.parse(reply.trim());
         return {
             ...result,
             usage: {
-                promptTokens: usage.input_tokens,
-                completionTokens: usage.output_tokens
+                promptTokens: usage?.prompt_tokens || 0,
+                completionTokens: usage?.completion_tokens || 0
             }
         };
     }
@@ -70,7 +76,7 @@ export async function maybeCapture(chatId, userMessage) {
     try {
         const result = await extract(userMessage);
         if (result.usage) {
-            await reportUsage('claude-haiku-4-5-20251001', result.usage.promptTokens, result.usage.completionTokens);
+            await reportUsage('gpt-4o-mini', result.usage.promptTokens, result.usage.completionTokens);
         }
         if (result.save && result.category && result.memory) {
             await saveMemory(chatId, result.category, result.memory, userMessage);

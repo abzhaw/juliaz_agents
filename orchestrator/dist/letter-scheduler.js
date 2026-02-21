@@ -21,12 +21,13 @@
  *   BACKEND_URL            ← defaults to http://localhost:3000
  *   + Lob env vars (see lob.ts) for physical sending
  */
-import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
+import 'dotenv/config';
 import { sendLetter } from './lob.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 const LETTER_HOUR = Number(process.env.LETTER_HOUR ?? 8);
 const CHECK_INTERVAL_MS = 30 * 60 * 1000; // 30 minutes
@@ -104,15 +105,14 @@ Write a heartfelt letter from Raphael to Julia.
 - End with love and encouragement
 - Close with "With love, Raphael"
 - No headers, no bullet points — just the letter`;
-    const response = await client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 500,
+    const response = await client.chat.completions.create({
+        model: 'gpt-4o',
         messages: [{ role: 'user', content: prompt }]
     });
-    const block = response.content[0];
-    if (block?.type !== 'text')
-        throw new Error('Unexpected response from Claude');
-    return block.text.trim();
+    const reply = response.choices[0]?.message?.content;
+    if (!reply)
+        throw new Error('Unexpected response from OpenAI');
+    return reply.trim();
 }
 async function saveLetterToBackend(content, status, lobId) {
     const res = await fetch(`${BACKEND}/letters`, {

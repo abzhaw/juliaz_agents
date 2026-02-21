@@ -45,14 +45,14 @@ export async function sendReply(chatId, messageId, text) {
  * Post a reply directly to the bridge reply store.
  * The bridge exposes REST for this via a reply queue that OpenClaw polls.
  */
-export async function postReply(chatId, text) {
+export async function postReply(chatId, text, messageId) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
     try {
         const res = await fetch(`${BRIDGE_URL}/reply`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chatId, text }),
+            body: JSON.stringify({ chatId, text, messageId }),
             signal: controller.signal
         });
         clearTimeout(timeoutId);

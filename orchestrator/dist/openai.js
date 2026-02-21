@@ -1,8 +1,14 @@
 /**
  * OpenAI API client — sends conversation history and returns a reply.
  */
+import { config } from 'dotenv';
 import OpenAI from 'openai';
 import { SYSTEM_PROMPT } from './prompt.js';
+config({ override: true });
+if (!process.env.OPENAI_API_KEY) {
+    console.error('ERROR: OPENAI_API_KEY is not set. Check orchestrator/.env');
+    process.exit(1);
+}
 const client = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY,
 });
