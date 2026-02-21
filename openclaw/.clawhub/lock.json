@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "skills": {
+    "tmux": {
+      "version": "1.0.0",
+      "installedAt": 1771689680254
+    },
+    "oracle": {
+      "version": "1.0.1",
+      "installedAt": 1771689685508
+    },
+    "notion": {
+      "version": "1.0.0",
+      "installedAt": 1771689687934
+    },
+    "code": {
+      "version": "1.0.4",
+      "installedAt": 1771689734090
+    }
+  }
+}

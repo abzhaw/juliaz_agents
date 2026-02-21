@@ -5,7 +5,7 @@
 
 ---
 
-**Buffer count**: 0  
+**Buffer count**: 1  
 **Last flush**: 2026-02-21  
 **Flush threshold**: 5 entries
 
@@ -13,7 +13,10 @@
 
 ## Buffer Entries
 
-_(flushed 2026-02-21 — 5 entries written to protocol docs)_
+### 1 [2026-02-21] — System Configuration & Documentation Update
+- Switched OpenClaw dashboard to local workspace for transparent management.
+- Re-identified OpenClaw as "OpenClawJulia" and added advanced skills (code, tmux, notion, oracle).
+- Updated system-wide plain-language documentation and agent cards.
 
 ---
 

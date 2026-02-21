@@ -1,0 +1,38 @@
+name: julia-bridge/health
+description: Check whether the MCP bridge and Julia are reachable before sending messages.
+
+mcp:
+  server: julia-bridge
+  method: bridge_health
+
+inputs:
+  required: []
+
+command:
+  bin: mcporter
+  args:
+    - call
+    - julia-bridge.bridge_health
+  env:
+    MCP_LOG: logs/julia-bridge.log
+
+outputs:
+  fields:
+    - name: status
+      type: string
+      enum: [ok, degraded, down]
+    - name: bridge
+      type: boolean
+    - name: julia
+      type: boolean
+    - name: latency_ms
+      type: integer
+
+workflow:
+  steps:
+    - "Run `mcporter call julia-bridge.bridge_health`"
+    - "Parse the JSON payload and bubble it up"
+  interpretation:
+    - "Treat `status=ok` as safe to send"
+    - "Treat `status=degraded` as warn-level but allow sending"
+    - "Treat `status=down` as failure and abort outbound messages"

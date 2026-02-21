@@ -2,7 +2,7 @@
 
 > **Who this is for**: Anyone who wants to understand this project without needing to be a software developer.  
 > **Maintained by**: The Docs Agent — updated whenever the system changes.  
-> **Last updated**: 2026-02-21
+> **Last updated**: 2026-02-21 (Update 2)
 
 ---
 
@@ -34,7 +34,7 @@ Antigravity  ─────────────────────  Th
     ▼
 Julia (the product being built)
     │
-    ├──▶  OpenClaw  ─────────────── The Messenger
+    ├──▶  OpenClawJulia  ────────── The Messenger
     │         Telegram, WhatsApp, Slack, Discord
     │
     ├──▶  Bridge  ──────────────── The Glue
@@ -65,18 +65,20 @@ Antigravity is the AI agent living inside the developer's code editor (IDE). It 
 
 ---
 
-### 📡 OpenClaw — The Messenger
+### 📡 OpenClawJulia — The Messenger
 
-OpenClaw is Julia's **communication layer**. It connects Julia to external messaging apps — Telegram, WhatsApp, Slack, Discord. When you send a message via Telegram, OpenClaw receives it first, then forwards it through the bridge so the system can respond.
+OpenClaw (now upgraded to **OpenClawJulia**) is Julia's **communication layer**. It connects Julia to external messaging apps — Telegram, WhatsApp, Slack, Discord. In this updated role, it also acts as an extension of Julia herself, capable of managing tools like code execution, terminal access (`tmux`), and knowledge retrieval.
 
 **Analogy**: OpenClaw is like a telephone switchboard operator. Calls come in, the operator routes them. Calls go out, the operator places them.
 
-**What OpenClaw can do:**
+**What OpenClawJulia can do:**
 - Receive messages from Telegram (and other apps)
 - Forward messages to the bridge for processing
 - Deliver replies back to users
+- **Run code** and manage terminal sessions via `tmux`
+- **Access Notion** and other external knowledge bases
+- **Self-manage** and troubleshoot its own gateway problems
 - Remember past conversations per contact
-- Check its own health and log activity
 
 **What OpenClaw cannot do:**
 - Make decisions or generate intelligent replies on its own — it relays and routes
@@ -185,4 +187,4 @@ cd backend && docker compose up -d
 
 ---
 
-*This document is maintained by the Docs Agent and updated when the system changes. Last updated: 2026-02-21.*
+*This document is maintained by the Docs Agent and updated when the system changes. Last updated: 2026-02-21 (Update 2).*

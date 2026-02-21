@@ -1,0 +1,52 @@
+name: julia-bridge/send
+description: >-
+  Send a message to Julia through the local MCP bridge. Always include a
+  correlationId so replies can be matched when polling.
+
+mcp:
+  server: julia-bridge
+  method: telegram_send
+
+inputs:
+  required:
+    - name: correlationId
+      type: string
+      description: Unique ID (UUID or deterministic token) that ties send + receive together
+    - name: text
+      type: string
+      description: The message body being relayed to Julia
+  optional:
+    - name: context
+      type: string
+      description: Extra metadata (channel name, user, etc.) passed through to Julia
+
+command:
+  bin: mcporter
+  args:
+    - call
+    - julia-bridge.telegram_send
+    - correlationId=${correlationId}
+    - text=${text}
+  optionalArgs:
+    context: context=${context}
+  env:
+    MCP_LOG: logs/julia-bridge.log
+
+workflow:
+  steps:
+    - "Run `mcporter call julia-bridge.telegram_send correlationId=<...> text=<...>`"
+    - "Capture the JSON response and return `{ success, correlationId, timestamp }`"
+  retry:
+    attempts: 1
+    delayMs: 2000
+  preconditions:
+    - "Invoke `julia-bridge/health` and ensure `status == ok` before sending"
+
+outputs:
+  fields:
+    - name: success
+      type: boolean
+    - name: correlationId
+      type: string
+    - name: timestamp
+      type: string

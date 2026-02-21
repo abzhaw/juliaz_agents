@@ -1,0 +1,47 @@
+name: julia-bridge/receive
+description: Poll the MCP bridge for replies from Julia. Optionally filter by correlationId and wait up to the provided timeout.
+
+mcp:
+  server: julia-bridge
+  method: telegram_receive
+
+inputs:
+  optional:
+    - name: correlationId
+      type: string
+      description: Return only replies that match this ID
+    - name: timeout
+      type: integer
+      description: How long to wait (ms) before returning an empty result
+      default: 0
+
+command:
+  bin: mcporter
+  args:
+    - call
+    - julia-bridge.telegram_receive
+  optionalArgs:
+    correlationId: correlationId=${correlationId}
+    timeout: timeout=${timeout}
+  env:
+    MCP_LOG: logs/julia-bridge.log
+
+outputs:
+  fields:
+    - name: messages
+      type: array
+      items:
+        type: object
+        properties:
+          - name: text
+            type: string
+          - name: correlationId
+            type: string
+          - name: timestamp
+            type: string
+
+workflow:
+  steps:
+    - "Call `mcporter call julia-bridge.telegram_receive` with any provided filters"
+    - "Parse the JSON array returned by the MCP server"
+    - "Return `{ messages: [...] }`, preserving order from the bridge"
