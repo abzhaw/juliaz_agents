@@ -1,0 +1,4 @@
+node_modules/
+dist/
+data/queue.json
+*.js.map

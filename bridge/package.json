@@ -1,0 +1,23 @@
+{
+    "name": "julia-openclaw-bridge",
+    "version": "1.0.0",
+    "description": "MCP bridge server — connects Julia (IDE) to OpenClaw (Telegram)",
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx src/index.ts",
+        "start": "node dist/index.js"
+    },
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.9.0",
+        "express": "^4.18.2",
+        "zod": "^3.22.4"
+    },
+    "devDependencies": {
+        "@types/express": "^4.17.21",
+        "@types/node": "^20.11.0",
+        "tsx": "^4.7.0",
+        "typescript": "^5.3.3"
+    }
+}
