@@ -251,9 +251,20 @@ juliaz_agents/
 │   ├── MEMORY.md                      ← Agent context
 │   └── sessions/                      ← Session logs
 │
+├── thesis/                            ← Master thesis agent workspace
+│   ├── config.yaml                    ← Access control (read-only research_papers/)
+│   ├── MEMORY.md                      ← Thesis agent identity & rules
+│   ├── research_papers/               ← Drop PDFs / notes here (agent reads only)
+│   ├── drafts/                        ← Agent-written sections (human reviews)
+│   └── documentation/
+│       └── project_log.md             ← Running log of everything built
+│
 └── .agent/
     └── skills/                        ← Julia's skill library (300+)
         ├── openclaw-gateway/          ← How Julia invokes OpenClaw
+        ├── thesis-research/           ← Summarise papers from research_papers/
+        ├── thesis-writer/             ← Draft thesis sections to drafts/
+        ├── thesis-log/                ← Append entries to project_log.md
         └── ...
 ```
 

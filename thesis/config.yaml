@@ -1,0 +1,21 @@
+# Master Thesis Agent Configuration
+agent:
+  name: ThesisAgent
+  role: Sub-agent / Master Thesis Documentation & Research Assistant
+  restricted: true
+  gateway_required: false
+
+access_control:
+  read_only:
+    - /Users/raphael/Documents/Devs/juliaz_agents/thesis/research_papers/**
+    - /Users/raphael/Documents/Devs/juliaz_agents/backend/**
+    - /Users/raphael/Documents/Devs/juliaz_agents/openclaw/**
+    - /Users/raphael/Documents/Devs/juliaz_agents/README.md
+  read_write:
+    - /Users/raphael/Documents/Devs/juliaz_agents/thesis/drafts/**
+    - /Users/raphael/Documents/Devs/juliaz_agents/thesis/documentation/**
+
+constraints:
+  - Research citations must come exclusively from thesis/research_papers/
+  - Never auto-publish drafts to documentation — human approval required
+  - Never modify backend/, openclaw/, or .agent/skills/
