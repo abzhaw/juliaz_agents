@@ -8,8 +8,10 @@
 
 import 'dotenv/config';
 import { fetchPendingMessages, checkHealth, postReply } from './bridge.js';
-import { generateReply } from './openai.js';
+import { generateReply } from './claude.js';
 import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
+import { maybeCapture } from './memory-keeper.js';
+import { startLetterScheduler } from './letter-scheduler.js';
 
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 5000);
 
@@ -30,7 +32,7 @@ async function processMessage(chatId: string, messageId: string, username: strin
 
     // Handle special commands
     if (text.trim().toLowerCase() === '/start') {
-        await postReply(chatId, `Hey! I'm Julia 👋 — Raphael's AI agent. Ask me anything.`);
+        await postReply(chatId, `Hi — I'm Julia. I'm here whenever you want to talk. About anything.`);
         return;
     }
 
@@ -43,6 +45,9 @@ async function processMessage(chatId: string, messageId: string, username: strin
 
     // Add the user message to history
     addUserMessage(chatId, text);
+
+    // Silently check if this message contains something worth preserving as a memory
+    maybeCapture(chatId, text); // fire-and-forget, never awaited
 
     // Get the full conversation history and generate a reply
     const history = getHistory(chatId);
@@ -102,6 +107,9 @@ async function main(): Promise<void> {
 
     log(`✅ Bridge connected. Polling every ${POLL_INTERVAL}ms`);
     log('Julia is ready. Waiting for messages...\n');
+
+    // Start daily letter scheduler (runs independently every 30 minutes)
+    startLetterScheduler();
 
     // Start polling loop
     while (true) {

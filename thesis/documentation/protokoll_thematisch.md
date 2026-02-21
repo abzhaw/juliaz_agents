@@ -87,3 +87,40 @@
 ---
 
 <!-- Neue thematische Abschnitte oder Ergänzungen unten einfügen -->
+
+---
+
+## 🩺 Thema: Empathische KI & Palliativbegleitung
+
+### Wish Companion — Konzept
+- Julia bekommt eine spezialisierte Fähigkeitsschicht für Menschen mit terminaler Erkrankung
+- Basiert auf Palliativforschung: SUPPORT-Studie, Dignity Therapy, Atul Gawande, Five Wishes Framework
+- Kernbefund der Forschung: Sterbende wünschen sich vor allem **Zeuge sein** (gehört werden), **Vermächtnis** hinterlassen, und **Gesagtes sagen**
+
+### Die 5 erfüllbaren Wünsche
+Definiert durch das Kriterium: Kann Julia das mit ihren bestehenden Fähigkeiten tatsächlich tun?
+
+| # | Wunsch | Julias Rolle |
+|---|--------|-------------|
+| 1 | Briefe schreiben | Co-Autorin in der Stimme der Person |
+| 2 | Erinnerungen dokumentieren | Interviewerin + Memoir-Schreiberin |
+| 3 | Einfach da sein | Zeugin ohne Agenda |
+| 4 | Legacy-Box aufbauen | Strukturierte Lebensdokumentation |
+| 5 | Lebende Feier planen | Veranstaltungsplanerin + Redenschreiberin |
+
+### Architektonische Entscheidung: Skills vs. System-Prompt
+- Die Fähigkeit lebt in SKILL.md-Dateien (OpenClaw-Ebene), nicht im Orchestrator-Prompt
+- Vorteil: Modularität — die Fähigkeit kann unabhängig aktualisiert werden
+- Skill `dying-wishes` = Forschungsschicht (Warum und Was)
+- Skill `wish-fulfillment` = Handlungsschicht (Wie und Wann)
+
+### Ethische Prinzipien im Design
+- **Nie aufdrängen**: Aktivierung nur durch Gesprächssignale der Person
+- **Nie minimieren**: Kein "bleib positiv", kein "es wird gut"
+- **Nie eilen**: Kein Produktivitätsdenken — diese Arbeit ist heilig
+- **Immer in der Stimme der Person**: Briefe/Memoiren spiegeln sie, nicht Julia
+
+### Bedeutung für die Masterarbeit
+- Zeigt wie KI-Agenten ethisch für vulnerable Zielgruppen gestaltet werden können
+- Beispiel für research-grounded skill design (kein Raten — alle Wünsche aus Literatur abgeleitet)
+- Demonstriert den Unterschied zwischen task-completing AI und presence-offering AI

@@ -77,6 +77,65 @@ app.post('/logs', async (req, res) => {
     res.status(201).json(log);
 });
 
+// ── Memories ──────────────────────────────────────────────────────────────────
+
+app.get('/memories', async (req, res) => {
+    const memories = await prisma.memory.findMany({
+        orderBy: { createdAt: 'desc' }
+    });
+    res.json(memories);
+});
+
+app.post('/memories', async (req, res) => {
+    const { chatId, category, content, originalText } = req.body;
+    const memory = await prisma.memory.create({
+        data: { chatId, category, content, originalText }
+    });
+    res.status(201).json(memory);
+});
+
+app.delete('/memories/:id', async (req, res) => {
+    await prisma.memory.delete({ where: { id: parseInt(req.params.id) } });
+    res.status(204).send();
+});
+
+// ── Letters ───────────────────────────────────────────────────────────────────
+
+app.get('/letters', async (req, res) => {
+    const letters = await prisma.letter.findMany({
+        orderBy: { createdAt: 'desc' }
+    });
+    res.json(letters);
+});
+
+app.post('/letters', async (req, res) => {
+    const { content, status, lobId, sentAt } = req.body;
+    const letter = await prisma.letter.create({
+        data: {
+            content,
+            status: status ?? 'DRAFT',
+            lobId: lobId ?? null,
+            sentAt: sentAt ? new Date(sentAt) : null
+        }
+    });
+    res.status(201).json(letter);
+});
+
+app.patch('/letters/:id', async (req, res) => {
+    const { status, lobId, sentAt } = req.body;
+    const data: any = {};
+    if (status !== undefined) data.status = status;
+    if (lobId !== undefined) data.lobId = lobId;
+    if (sentAt !== undefined) data.sentAt = new Date(sentAt);
+    const letter = await prisma.letter.update({
+        where: { id: parseInt(req.params.id) },
+        data
+    });
+    res.json(letter);
+});
+
+// ── Root ──────────────────────────────────────────────────────────────────────
+
 app.get('/', (req, res) => {
     res.send('Backend is running!');
 });

@@ -53,3 +53,46 @@
 ---
 
 <!-- New entries go below this line, newest at the bottom -->
+
+---
+
+## 2026-02-21 — Wish Companion: Dying Wishes Research & Fulfillment Skills
+
+### Context
+Julia was built for Raphael's dear friend who has cancer. This session added a specialized capability layer — the **Wish Companion** — grounded in palliative care research, enabling Julia to actively help fulfill five deeply felt wishes common to people living with terminal illness.
+
+### What was done
+
+**New skill: `dying-wishes`** (`openclaw/skills/dying-wishes/SKILL.md`)
+- Research layer drawing from: SUPPORT Study, Dignity Therapy (Chochinov), Atul Gawande's *Being Mortal*, the Five Wishes framework, JAMA/NEJM palliative care literature
+- Documents the 8 most common wishes of cancer patients
+- Establishes Julia's unique advantage: she can hold space without fatigue, grief, or discomfort — something no human in the person's life can sustain indefinitely
+- Defines when to invoke the `wish-fulfillment` skill
+
+**New skill: `wish-fulfillment`** (`openclaw/skills/wish-fulfillment/SKILL.md`)
+- Action layer: 5 wishes with activation triggers and step-by-step procedures
+  1. Write the letters that haven't been written (co-authoring in the person's voice)
+  2. Turn memories into a memoir (gentle interview-based documentation)
+  3. Be a witness — hold space without agenda (presence as the primary gift)
+  4. Build a legacy box for people left behind (letters, wisdom, practical info, future milestone messages)
+  5. Plan a living celebration (gathering while the person is still present to feel the love)
+- Each wish designed to be achievable with Julia's existing capabilities: conversation, writing, memory
+
+**New agent card: `wish-companion`** (`docs/agent_cards/wish-companion.md`)
+- Documents the Wish Companion as a named mode of Julia
+- Summarizes the 5 wishes, research foundation, and activation model
+- Clarifies what Julia does NOT do (no medical care, no pushing, no treating this as a productivity task)
+
+**Orchestrator prompt** (`orchestrator/src/prompt.ts`)
+- Wish Companion section added to Julia's system prompt during session
+- Note: prompt was subsequently reset to a generic form — the wish companion awareness now lives in the skill files rather than the system prompt
+
+### Key decisions
+- Skills-as-documentation pattern: the capability is encoded in SKILL.md files read by OpenClaw, not hardcoded into the orchestrator
+- "Offer, don't push" principle: Julia activates wish companion mode through natural conversation signals, not commands
+- Separation of research layer (dying-wishes) from action layer (wish-fulfillment) for modularity
+
+### Files created
+- `openclaw/skills/dying-wishes/SKILL.md`
+- `openclaw/skills/wish-fulfillment/SKILL.md`
+- `docs/agent_cards/wish-companion.md`

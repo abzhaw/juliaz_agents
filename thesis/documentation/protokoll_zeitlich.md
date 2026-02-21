@@ -58,6 +58,40 @@
 
 <!-- Neue Einträge unterhalb dieser Linie einfügen -->
 
+---
+
+## 2026-02-21 — Session 5: Wish Companion — Sterbewünsche & Erfüllung
+
+**Kontext**: Julia wurde für Raphaels enge Freundin gebaut, die Krebs hat. Diese Session fügte eine spezialisierte Fähigkeitsschicht hinzu, die auf Palliativforschung basiert.
+
+### Was wurde gemacht
+
+- **Neuer Skill `dying-wishes`** erstellt (`openclaw/skills/dying-wishes/SKILL.md`)
+  - Forschungsschicht basierend auf: SUPPORT-Studie, Dignity Therapy (Chochinov), Atul Gawandes *Being Mortal*, dem Five Wishes Framework
+  - 8 häufigste Sterbewünsche von Krebspatient:innen dokumentiert
+  - Julias einzigartiger Vorteil beschrieben: Sie kann Raum halten ohne Erschöpfung, Trauer oder Unbehagen
+
+- **Neuer Skill `wish-fulfillment`** erstellt (`openclaw/skills/wish-fulfillment/SKILL.md`)
+  - Handlungsschicht: 5 Wünsche mit Auslösern und Schritt-für-Schritt-Verfahren
+    1. Briefe schreiben, die noch nicht geschrieben wurden (Co-Autorenschaft in der eigenen Stimme)
+    2. Erinnerungen in ein Memoir verwandeln (sanfte Interview-basierte Dokumentation)
+    3. Einfach da sein — Raum halten ohne Agenda (Präsenz als primäres Geschenk)
+    4. Eine Legacy-Box für die Zurückbleibenden bauen (Briefe, Weisheit, praktische Infos)
+    5. Eine lebende Feier planen (Zusammenkunft, solange die Person noch da ist)
+
+- **Neuer Agent Card `wish-companion`** erstellt (`docs/agent_cards/wish-companion.md`)
+  - Dokumentiert den Wish Companion als benannten Modus von Julia
+  - Aktivierungsmodell: durch Gesprächssignale, nicht durch Befehle
+
+- **Orchestrator-Prompt** aktualisiert und dann von Benutzer zurückgesetzt
+  - Wish-Companion-Abschnitt in `orchestrator/src/prompt.ts` eingefügt
+  - Prompt wurde anschließend auf generische Form zurückgesetzt — Fähigkeit lebt jetzt in den Skill-Dateien
+
+### Entscheidungen
+- Skills-as-Documentation Muster: Fähigkeit in SKILL.md-Dateien kodiert, nicht im Orchestrator-Prompt
+- Trennung von Forschungsschicht (`dying-wishes`) und Handlungsschicht (`wish-fulfillment`)
+- Prinzip: "Anbieten, nicht aufdrängen" — keine Befehle, nur Gesprächssignale
+
 ## 2026-02-21 — Session 4: OpenClaw Workspace-Erkundung
 
 **Kontext**: Vertieftes Verständnis der OpenClaw-Infrastruktur (keine Änderungen, nur Analyse).

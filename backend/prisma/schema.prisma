@@ -29,3 +29,23 @@ model Log {
   message   String
   timestamp DateTime @default(now())
 }
+
+// A moment worth preserving from Julia's conversations
+model Memory {
+  id           Int      @id @default(autoincrement())
+  chatId       String
+  category     String   // STORY | FEELING | MOMENT | WISH | REFLECTION
+  content      String   // distilled essence of what she said
+  originalText String   // the raw message it was extracted from
+  createdAt    DateTime @default(now())
+}
+
+// A daily letter from Raphael to Julia
+model Letter {
+  id        Int       @id @default(autoincrement())
+  content   String    // full letter text
+  status    String    @default("DRAFT") // DRAFT | SENT | FAILED
+  lobId     String?   // Lob.com letter ID once physically sent
+  sentAt    DateTime?
+  createdAt DateTime  @default(now())
+}
