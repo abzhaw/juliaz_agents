@@ -4,6 +4,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import * as z from 'zod/v4';
+import cors from 'cors';
 
 const HOST = '127.0.0.1';
 const PORT = 3001;
@@ -132,6 +133,8 @@ function createServer() {
 }
 
 const app = createMcpExpressApp({ host: HOST });
+
+app.use(cors());
 
 app.use((req, res, next) => {
   console.log(`\u005bbridge] ${req.method} ${req.url}`);

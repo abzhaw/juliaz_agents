@@ -12,6 +12,7 @@ import express, { type Request, type Response } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
+import cors from 'cors';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -40,6 +41,13 @@ interface TelegramMessage {
 // ─── Queue ────────────────────────────────────────────────────────────────────
 
 let messages: TelegramMessage[] = [];
+let heartbeats: Record<string, number | null> = { julia: null, openclaw: null };
+
+function updateHeartbeat(peer: string) {
+    if (heartbeats.hasOwnProperty(peer)) {
+        heartbeats[peer] = Date.now();
+    }
+}
 
 async function loadQueue(): Promise<void> {
     try {
@@ -131,11 +139,31 @@ mcp.tool(
 // ─── Express App ──────────────────────────────────────────────────────────────
 
 const app = express();
+app.use(cors());
 app.use(express.json());
 
 // Health check
 app.get('/health', (_req: Request, res: Response) => {
-    res.json({ ok: true, bridge: 'julia-openclaw', version: '1.0.0' });
+    res.json({
+        ok: true,
+        bridge: 'julia-openclaw',
+        version: '1.0.0',
+        heartbeats: {
+            julia: heartbeats.julia ? new Date(heartbeats.julia).toISOString() : null,
+            openclaw: heartbeats.openclaw ? new Date(heartbeats.openclaw).toISOString() : null
+        },
+        counts: {
+            pending: messages.filter((m) => m.status === 'pending').length,
+            processing: messages.filter((m) => m.status === 'processing').length,
+            replied: messages.filter((m) => m.status === 'replied').length
+        }
+    });
+});
+
+app.post('/heartbeat/:peer', (req, res) => {
+    const { peer } = req.params;
+    updateHeartbeat(peer);
+    res.json({ ok: true, peer, timestamp: heartbeats[peer] ? new Date(heartbeats[peer]!).toISOString() : null });
 });
 
 // OpenClaw → POST incoming Telegram message
@@ -149,6 +177,7 @@ app.post('/incoming', async (req: Request, res: Response) => {
         timestamp: new Date().toISOString(), status: 'pending',
     };
     messages.push(message);
+    updateHeartbeat('openclaw');
     await saveQueue();
     log(`Incoming from ${message.username} (${message.chatId}): "${message.text.slice(0, 60)}"`);
     res.json({ ok: true, messageId: message.id });
@@ -161,6 +190,7 @@ app.get('/pending-reply/:chatId', async (req: Request, res: Response) => {
     if (replied.length === 0) { res.json({ reply: null }); return; }
     const latest = replied[replied.length - 1]!;
     messages = messages.filter((m) => m.id !== latest.id);
+    updateHeartbeat('openclaw');
     await saveQueue();
     log(`Reply consumed for ${chatId}: "${(latest.reply ?? '').slice(0, 60)}"`);
     res.json({ reply: latest.reply });
@@ -184,17 +214,50 @@ app.post('/reply', async (req: Request, res: Response) => {
             status: 'replied', reply: String(text),
         });
     }
+    updateHeartbeat('julia');
     await saveQueue();
     log(`[REST] Reply stored for ${String(chatId)}: "${String(text).slice(0, 60)}"`);
     res.json({ ok: true });
 });
 
+// For Dashboard compatibility with old endpoints
+app.get('/queues/:target', (req, res) => {
+    const { target } = req.params;
+    const items = target === 'julia'
+        ? messages.filter(m => m.status === 'pending')
+        : messages.filter(m => m.status === 'replied');
+    res.json({ target, size: items.length, messages: items });
+});
+
+app.post('/inbound', async (req, res) => {
+    const { chatId, text } = req.body;
+    updateHeartbeat('julia');
+    // Save as reply
+    const msg = messages.find(m => m.chatId === String(chatId) && (m.status === 'pending' || m.status === 'processing'));
+    if (msg) {
+        msg.status = 'replied';
+        msg.reply = String(text);
+    } else {
+        messages.push({
+            id: `reply-${randomUUID()}`,
+            chatId: String(chatId), userId: '', username: '', text: '',
+            timestamp: new Date().toISOString(),
+            status: 'replied', reply: String(text),
+        });
+    }
+    await saveQueue();
+    res.json({ success: true, queued: messages.filter(m => m.status === 'replied').length });
+});
+
 // Debug — all messages
-app.get('/messages', (_req: Request, res: Response) => { res.json(messages); });
+app.get('/messages', (_req: Request, res: Response) => {
+    updateHeartbeat('julia');
+    res.json(messages);
+});
 
 // MCP over Streamable HTTP — Julia connects here
 // Stateless mode: new transport per request
-app.all('/mcp', async (req: Request, res: Response) => {
+const mcpHandler = async (req: Request, res: Response) => {
     const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: undefined, // stateless
         onsessioninitialized: undefined,
@@ -202,8 +265,48 @@ app.all('/mcp', async (req: Request, res: Response) => {
 
     res.on('close', () => { transport.close(); });
 
-    const server = new McpServer({ name: 'julia-openclaw-bridge', version: '1.0.0' });
+    const server = new McpServer({ name: 'julia-bridge', version: '1.0.0' });
 
+    // --- Aliases for server.js Compatibility ---
+    server.tool('telegram_receive', 'Fetch queued messages from the bridge.',
+        { correlationId: z.string().optional(), timeout: z.number().optional(), target: z.enum(['julia', 'openclaw']).optional() },
+        async ({ correlationId, target }) => {
+            const t = target ?? 'openclaw';
+            const available = messages.filter((m) => (t === 'julia' ? m.status === 'pending' : (m.status === 'replied' && m.chatId === correlationId)));
+            return { content: [{ type: 'text' as const, text: JSON.stringify({ messages: available }) }] };
+        });
+
+    server.tool('telegram_send', 'Enqueue a message for Julia/OpenClaw.',
+        { correlationId: z.string(), text: z.string(), target: z.enum(['julia', 'openclaw']).optional() },
+        async ({ correlationId, text, target }) => {
+            const t = target ?? 'julia';
+            if (t === 'julia') {
+                messages.push({
+                    id: `msg-${randomUUID()}`, chatId: correlationId, userId: '', username: 'mcp-tool', text, timestamp: new Date().toISOString(), status: 'pending'
+                });
+            } else {
+                messages.push({
+                    id: `reply-${randomUUID()}`, chatId: correlationId, userId: '', username: 'mcp-tool', text: '', timestamp: new Date().toISOString(), status: 'replied', reply: text
+                });
+            }
+            await saveQueue();
+            return { content: [{ type: 'text' as const, text: JSON.stringify({ success: true, correlationId }) }] };
+        });
+
+    server.tool('bridge_health', 'Report bridge + peer reachability.', {},
+        async () => ({
+            content: [{
+                type: 'text' as const,
+                text: JSON.stringify({
+                    status: 'ok',
+                    bridge: true,
+                    julia: Boolean(heartbeats.julia),
+                    queue: { julia: messages.filter(m => m.status === 'pending').length, openclaw: messages.filter(m => m.status === 'replied').length }
+                })
+            }]
+        }));
+
+    // --- Original Tools ---
     server.tool('telegram_get_pending_messages', 'Get pending Telegram messages waiting for Julia.', {},
         async () => {
             const pending = messages.filter((m) => m.status === 'pending');
@@ -227,7 +330,12 @@ app.all('/mcp', async (req: Request, res: Response) => {
 
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);
-});
+};
+
+app.all('/mcp', mcpHandler);
+
+// Root MCP for compatibility
+app.all('/', mcpHandler);
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 

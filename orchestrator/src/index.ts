@@ -8,7 +8,7 @@
 
 import 'dotenv/config';
 import { fetchPendingMessages, checkHealth, postReply } from './bridge.js';
-import { generateReply } from './claude.js';
+import { generateReply } from './openai.js';
 import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
 
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 5000);
@@ -95,12 +95,14 @@ async function main(): Promise<void> {
     log('Julia is ready. Waiting for messages...\n');
 
     // Start polling loop
-    const loop = async () => {
-        await poll();
-        setTimeout(loop, POLL_INTERVAL);
-    };
-
-    await loop();
+    while (true) {
+        try {
+            await poll();
+        } catch (err) {
+            log(`Loop error: ${err}`);
+        }
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+    }
 }
 
 main().catch((err) => {

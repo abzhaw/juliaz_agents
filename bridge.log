@@ -1,0 +1,26 @@
+
+> julia-openclaw-bridge@1.0.0 start
+> node dist/index.js
+
+[bridge] Loaded 6 messages from queue
+node:events:486
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:2016:16)
+    at listenInCluster (node:net:2073:12)
+    at Server.listen (node:net:2178:7)
+    at app.listen (/Users/raphael/Documents/Devs/juliaz_agents/bridge/node_modules/express/lib/application.js:635:24)
+    at file:///Users/raphael/Documents/Devs/juliaz_agents/bridge/dist/index.js:283:5
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:2052:8)
+    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+  code: 'EADDRINUSE',
+  errno: -48,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+
+Node.js v25.6.1

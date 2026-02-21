@@ -20,7 +20,7 @@ export interface Turn {
  */
 export async function generateReply(history: Turn[]): Promise<string> {
     const response = await client.messages.create({
-        model: 'claude-opus-4-5',
+        model: 'claude-3-5-sonnet-20241022',
         max_tokens: 1024,
         system: SYSTEM_PROMPT,
         messages: history.map((m) => ({

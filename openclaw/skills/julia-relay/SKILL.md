@@ -42,14 +42,11 @@ OpenClaw polls bridge → gets Julia's reply → sends to user via Telegram
 ### Step 1: Forward the message to the bridge
 
 ```bash
-curl -s -X POST http://localhost:3001/incoming \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chatId": "<CHAT_ID>",
-    "userId": "<USER_ID>",
-    "username": "<USERNAME>",
-    "text": "<MESSAGE_TEXT>"
-  }'
+mcporter call julia-bridge.telegram_send --params '{
+  "correlationId": "<CHAT_ID>",
+  "text": "<MESSAGE_TEXT>",
+  "target": "julia"
+}'
 ```
 
 Save the `messageId` from the response.
@@ -62,9 +59,13 @@ Send a brief acknowledgment while Julia processes:
 ### Step 3: Poll for Julia's reply (up to 60 seconds)
 
 ```bash
-# Poll every 3 seconds for up to 60 seconds
+# Poll using the MCP tool
 for i in $(seq 1 20); do
-  REPLY=$(curl -s http://localhost:3001/pending-reply/<CHAT_ID> | grep -o '"reply":"[^"]*"' | cut -d'"' -f4)
+  REPLY=$(mcporter call julia-bridge.telegram_receive --params '{
+    "correlationId": "<CHAT_ID>",
+    "target": "openclaw"
+  }' | grep -o '"reply":"[^"]*"' | head -1 | cut -d'"' -f4)
+  
   if [ -n "$REPLY" ] && [ "$REPLY" != "null" ]; then
     echo "REPLY: $REPLY"
     break
@@ -87,7 +88,7 @@ If no reply arrives after 60 seconds:
 Before forwarding, verify the bridge is up:
 
 ```bash
-curl -s http://localhost:3001/health
+mcporter call julia-bridge.bridge_health
 ```
 
 If the bridge is not running (`Connection refused`), inform the user:
