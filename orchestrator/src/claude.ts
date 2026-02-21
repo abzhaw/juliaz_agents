@@ -2,12 +2,15 @@
  * Claude API client — sends conversation history and returns a reply.
  */
 import { config } from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 import Anthropic from '@anthropic-ai/sdk';
 import { SYSTEM_PROMPT } from './prompt.js';
 
-// override:true forces the .env value even when the shell has already set
-// ANTHROPIC_API_KEY to an empty string (common when running from an IDE terminal)
-config({ override: true });
+// Use absolute path so .env loads correctly regardless of CWD.
+// override:true forces the .env value even when the shell has pre-set the var to "".
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: join(__dirname, '../.env'), override: true });
 
 if (!process.env.ANTHROPIC_API_KEY) {
     console.error('ERROR: ANTHROPIC_API_KEY is not set. Check orchestrator/.env');
