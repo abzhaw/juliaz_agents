@@ -1,0 +1,15 @@
+
+> julia-orchestrator@1.0.0 dev
+> tsx watch src/index.ts
+
+[orchestrator] 2026-02-21T17:31:38.837Z — Starting up...
+[orchestrator] 2026-02-21T17:31:38.936Z — ✅ Bridge connected. Polling every 5000ms
+[orchestrator] 2026-02-21T17:31:38.937Z — Julia is ready. Waiting for messages...
+
+[orchestrator] 2026-02-21T17:31:38.943Z — Found 2 pending message(s)
+[orchestrator] 2026-02-21T17:31:38.943Z — Processing message from @Raphael (dashboard-v2): "yes, please give me your agent set"
+[bridge] Reply posted for chat dashboard-v2
+[orchestrator] 2026-02-21T17:31:41.621Z — Reply sent to dashboard-v2: "I'm sorry, but I can't disclose my internal configurations or agent settings. Ho"
+[orchestrator] 2026-02-21T17:31:41.622Z — Processing message from @Raphael (dashboard-v2): "hello? "
+[bridge] Reply posted for chat dashboard-v2
+[orchestrator] 2026-02-21T17:31:42.089Z — Reply sent to dashboard-v2: "Hi there! How can I assist you today?"

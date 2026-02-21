@@ -140,7 +140,8 @@ mcp.tool(
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // Health check
 app.get('/health', (_req: Request, res: Response) => {
@@ -169,7 +170,10 @@ app.post('/heartbeat/:peer', (req, res) => {
 // OpenClaw → POST incoming Telegram message
 app.post('/incoming', async (req: Request, res: Response) => {
     const { chatId, userId, username, text } = req.body as Record<string, unknown>;
-    if (!chatId || !text) { res.status(400).json({ error: 'chatId and text required' }); return; }
+    if (!chatId || !text || String(chatId) === 'undefined') {
+        res.status(400).json({ error: 'Valid chatId and text required' });
+        return;
+    }
     const message: TelegramMessage = {
         id: `msg-${randomUUID()}`,
         chatId: String(chatId), userId: String(userId ?? ''),
@@ -199,7 +203,10 @@ app.get('/pending-reply/:chatId', async (req: Request, res: Response) => {
 // Orchestrator → POST a reply for a chatId (direct REST, no MCP needed)
 app.post('/reply', async (req: Request, res: Response) => {
     const { chatId, text, messageId } = req.body as Record<string, unknown>;
-    if (!chatId || !text) { res.status(400).json({ error: 'chatId and text required' }); return; }
+    if (!chatId || !text || String(chatId) === 'undefined') {
+        res.status(400).json({ error: 'Valid chatId and text required' });
+        return;
+    }
     const msg = messages.find(
         (m) => m.chatId === String(chatId) && (m.status === 'pending' || m.status === 'processing') && (!messageId || m.id === String(messageId)),
     );
@@ -232,6 +239,7 @@ app.get('/queues/:target', (req, res) => {
 app.post('/inbound', async (req, res) => {
     const { chatId, text } = req.body;
     updateHeartbeat('julia');
+    if (!chatId || String(chatId) === 'undefined') { res.status(400).json({ error: 'Valid chatId required' }); return; }
     // Save as reply
     const msg = messages.find(m => m.chatId === String(chatId) && (m.status === 'pending' || m.status === 'processing'));
     if (msg) {
@@ -251,8 +259,26 @@ app.post('/inbound', async (req, res) => {
 
 // Debug — all messages
 app.get('/messages', (_req: Request, res: Response) => {
-    updateHeartbeat('julia');
     res.json(messages);
+});
+
+// Atomic poll and consume
+app.get('/consume', (req: Request, res: Response) => {
+    const { target } = req.query;
+    const t = (target as string) || 'julia';
+    updateHeartbeat(t === 'julia' ? 'julia' : 'openclaw');
+
+    const statusMatch = (t === 'julia' ? 'pending' : 'replied');
+    const nextStatus = (t === 'julia' ? 'processing' : 'replied'); // openclaw just reads
+
+    const available = messages.filter(m => m.status === statusMatch);
+
+    if (t === 'julia') {
+        available.forEach(m => { m.status = 'processing'; });
+        if (available.length > 0) saveQueue();
+    }
+
+    res.json({ messages: available });
 });
 
 // MCP over Streamable HTTP — Julia connects here
@@ -272,7 +298,14 @@ const mcpHandler = async (req: Request, res: Response) => {
         { correlationId: z.string().optional(), timeout: z.number().optional(), target: z.enum(['julia', 'openclaw']).optional() },
         async ({ correlationId, target }) => {
             const t = target ?? 'openclaw';
-            const available = messages.filter((m) => (t === 'julia' ? m.status === 'pending' : (m.status === 'replied' && m.chatId === correlationId)));
+            updateHeartbeat(t === 'julia' ? 'julia' : 'openclaw');
+            // If correlationId is provided, filter by it. Otherwise, return all relevant messages.
+            const available = messages.filter((m) => {
+                const statusMatch = (t === 'julia' ? m.status === 'pending' : m.status === 'replied');
+                if (!statusMatch) return false;
+                if (correlationId && m.chatId !== correlationId) return false;
+                return true;
+            });
             return { content: [{ type: 'text' as const, text: JSON.stringify({ messages: available }) }] };
         });
 
@@ -280,6 +313,7 @@ const mcpHandler = async (req: Request, res: Response) => {
         { correlationId: z.string(), text: z.string(), target: z.enum(['julia', 'openclaw']).optional() },
         async ({ correlationId, text, target }) => {
             const t = target ?? 'julia';
+            updateHeartbeat(t === 'julia' ? 'openclaw' : 'julia'); // sender is the other peer
             if (t === 'julia') {
                 messages.push({
                     id: `msg-${randomUUID()}`, chatId: correlationId, userId: '', username: 'mcp-tool', text, timestamp: new Date().toISOString(), status: 'pending'
@@ -294,17 +328,32 @@ const mcpHandler = async (req: Request, res: Response) => {
         });
 
     server.tool('bridge_health', 'Report bridge + peer reachability.', {},
-        async () => ({
-            content: [{
-                type: 'text' as const,
-                text: JSON.stringify({
-                    status: 'ok',
-                    bridge: true,
-                    julia: Boolean(heartbeats.julia),
-                    queue: { julia: messages.filter(m => m.status === 'pending').length, openclaw: messages.filter(m => m.status === 'replied').length }
-                })
-            }]
-        }));
+        async () => {
+            updateHeartbeat('openclaw'); // Assume MCP queries come from OpenClaw (or user)
+            const now = Date.now();
+            const juliaAlive = heartbeats.julia ? (now - heartbeats.julia < 30000) : false;
+            const openclawAlive = heartbeats.openclaw ? (now - heartbeats.openclaw < 30000) : false;
+
+            return {
+                content: [{
+                    type: 'text' as const,
+                    text: JSON.stringify({
+                        status: 'ok',
+                        bridge: true,
+                        julia: juliaAlive,
+                        openclaw: openclawAlive,
+                        heartbeats: {
+                            julia: heartbeats.julia ? new Date(heartbeats.julia).toISOString() : null,
+                            openclaw: heartbeats.openclaw ? new Date(heartbeats.openclaw).toISOString() : null
+                        },
+                        queue: {
+                            julia: messages.filter(m => m.status === 'pending').length,
+                            openclaw: messages.filter(m => m.status === 'replied').length
+                        }
+                    }, null, 2)
+                }]
+            };
+        });
 
     // --- Original Tools ---
     server.tool('telegram_get_pending_messages', 'Get pending Telegram messages waiting for Julia.', {},

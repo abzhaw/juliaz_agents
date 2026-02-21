@@ -10,8 +10,15 @@ import { fetchPendingMessages, checkHealth, postReply } from './bridge.js';
 import { generateReply } from './openai.js';
 import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 5000);
-function log(msg) {
-    console.log(`[orchestrator] ${new Date().toISOString()} — ${msg}`);
+function log(msg, level = 'info') {
+    const timestamp = new Date().toISOString();
+    console.log(`[orchestrator] ${timestamp} — ${msg}`);
+    // Fire and forget log to backend
+    fetch('http://localhost:3000/logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ level, source: 'orchestrator', message: msg })
+    }).catch(() => { });
 }
 async function processMessage(chatId, messageId, username, text) {
     log(`Processing message from @${username} (${chatId}): "${text.slice(0, 80)}"`);
@@ -48,10 +55,11 @@ async function poll() {
                 await processMessage(msg.chatId, msg.id, msg.username, msg.text);
             }
             catch (err) {
-                log(`Error processing message ${msg.id}: ${err}`);
+                log(`Error processing message ${msg.id}: ${err.message}`);
+                console.error(err);
                 // Post an error reply so the user knows something went wrong
                 try {
-                    await postReply(msg.chatId, '⚠️ Something went wrong on my end. Try again in a moment.');
+                    await postReply(msg.chatId, `⚠️ Error: ${err.message}. Please check logs.`);
                 }
                 catch {
                     // best effort
@@ -81,11 +89,15 @@ async function main() {
     log(`✅ Bridge connected. Polling every ${POLL_INTERVAL}ms`);
     log('Julia is ready. Waiting for messages...\n');
     // Start polling loop
-    const loop = async () => {
-        await poll();
-        setTimeout(loop, POLL_INTERVAL);
-    };
-    await loop();
+    while (true) {
+        try {
+            await poll();
+        }
+        catch (err) {
+            log(`Loop error: ${err}`);
+        }
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+    }
 }
 main().catch((err) => {
     console.error('Fatal error:', err);

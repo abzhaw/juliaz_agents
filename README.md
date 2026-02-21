@@ -55,39 +55,45 @@ and the AI assistant doing the building (Antigravity).
 │                JULIA — The Multi-Agent System (the product)          │
 │                                                                      │
 │   ┌─────────────────────────────────────────────────────────────┐   │
-│   │  OPENCLAW — Communication Sub-Agent                         │   │
-│   │  Workspace:  ./openclaw/                                    │   │
-│   │  CLI:        openclaw  (npm global)                         │   │
-│   │  Gateway:    ws://127.0.0.1:18789                           │   │
-│   │  Owns:       Telegram · WhatsApp · Slack · Discord          │   │
+│   │  FRONTEND — Command Center Dashboard      [NEXT.JS]         │   │
+│   │  Location:   ./frontend/                                    │   │
+│   │  Port:       3002                                           │   │
+│   │  Stack:      Next.js 15 + Tailwind + Framer Motion          │   │
 │   └──────────────────────┬──────────────────────────────────────┘   │
-│                           │ relays messages via                      │
-│   ┌─────────────────────────────────────────────────────────────┐   │
+│                           │ interacts with                           │
+│   ┌──────────────────────▼──────────────────────────────────────┐   │
 │   │  BRIDGE — MCP Glue Server                                   │   │
 │   │  Location:   ./bridge/                                      │   │
 │   │  Port:       3001                                           │   │
-│   │  Role:       connects OpenClaw ↔ backend/orchestration      │   │
+│   │  Role:       connects Agents ↔ UI                           │   │
 │   └──────────────────────┬──────────────────────────────────────┘   │
-│                           │ calls                                    │
-│   ┌─────────────────────────────────────────────────────────────┐   │
+│                           │ and                                      │
+│   ┌──────────────────────▼──────────────────────────────────────┐   │
 │   │  BACKEND — REST API Product           [DOCKER]              │   │
 │   │  Location:   ./backend/                                     │   │
 │   │  Port:       3000                                           │   │
-│   │  Stack:      Express + TypeScript + Prisma + PostgreSQL     │   │
+│   │  Role:       Persistence (Tasks, Logs, System State)        │   │
+│   └──────────────────────┬──────────────────────────────────────┘   │
+│                           │ updated by                               │
+│   ┌──────────────────────▼──────────────────────────────────────┐   │
+│   │  ORCHESTRATOR — Agent Intelligence                          │   │
+│   │  Location:   ./orchestrator/                                │   │
+│   │  Role:       Thinks, Polls Bridge, Writes Backend Logs      │   │
 │   └─────────────────────────────────────────────────────────────┘   │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## The 4 Components
+## The 5 Components
 
 | Component | What it is | Where it runs |
 |---|---|---|
-| **Antigravity (you)** | The IDE agent that builds Julia | MacBook — inside this IDE |
-| **OpenClaw** | Communication agent (Telegram, WhatsApp, etc.) | MacBook — local CLI + WebSocket |
-| **Bridge (`bridge/`)** | MCP glue server connecting OpenClaw ↔ orchestration | MacBook — Node.js on port 3001 |
-| **Backend (`backend/`)** | The REST API Julia is building | Docker Compose — port 3000 |
+| **Frontend (`frontend/`)** | Next-Gen Next.js 15 Dashboard | MacBook — port 3002 |
+| **Bridge (`bridge/`)** | MCP glue server connecting Agents ↔ UI | MacBook — port 3001 |
+| **Backend (`backend/`)** | REST API with Postgres persistence | Docker Compose — port 3000 |
+| **Orchestrator** | Julia's primary "brain" (Loop + AI) | MacBook — independent process |
+| **OpenClaw** | Communication gateway (Telgram, etc.) | MacBook — local CLI |
 
 ---
 

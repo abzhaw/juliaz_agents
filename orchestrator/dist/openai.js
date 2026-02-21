@@ -10,19 +10,31 @@ const client = new OpenAI({
  * Generate a reply from OpenAI given the full conversation history.
  */
 export async function generateReply(history) {
-    const response = await client.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
-            ...history.map((m) => ({
-                role: m.role,
-                content: m.content,
-            })),
-        ],
-    });
-    const reply = response.choices[0]?.message?.content;
-    if (!reply) {
-        throw new Error('Unexpected empty response from OpenAI');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    try {
+        const response = await client.chat.completions.create({
+            model: 'gpt-4o',
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                ...history.map((m) => ({
+                    role: m.role,
+                    content: m.content,
+                })),
+            ],
+        }, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        const reply = response.choices[0]?.message?.content;
+        if (!reply) {
+            throw new Error('Unexpected empty response from OpenAI');
+        }
+        return reply;
     }
-    return reply;
+    catch (error) {
+        console.error('[openai] API Error:', error);
+        if (error.response) {
+            console.error('[openai] Response data:', error.response.data);
+        }
+        throw error;
+    }
 }
