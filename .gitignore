@@ -1,0 +1,10 @@
+
+.env.secrets
+
+.env
+
+auth-profiles.json
+
+# macOS
+.DS_Store
+**/.DS_Store
