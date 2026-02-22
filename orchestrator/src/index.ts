@@ -8,12 +8,14 @@
 
 import 'dotenv/config';
 import { fetchPendingMessages, checkHealth, postReply } from './bridge.js';
-import { generateReply } from './openai.js';
+import { generateReply } from './claude.js';
 import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
 import { maybeCapture } from './memory-keeper.js';
 import { startLetterScheduler } from './letter-scheduler.js';
 
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 5000);
+
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
 function log(msg: string, level: string = 'info'): void {
     const timestamp = new Date().toISOString();
@@ -28,11 +30,24 @@ function log(msg: string, level: string = 'info'): void {
 }
 
 async function reportUsage(model: string, promptTokens: number, completionTokens: number): Promise<void> {
-    fetch('http://localhost:3000/usage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, promptTokens, completionTokens })
-    }).catch(() => { });
+    for (let i = 0; i < 3; i++) {
+        try {
+            const res = await fetch('http://localhost:3000/usage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, promptTokens, completionTokens }),
+                signal: AbortSignal.timeout(5000),
+            });
+            if (res.ok) return;
+            throw new Error(`HTTP ${res.status}`);
+        } catch (err) {
+            if (i === 2) {
+                console.error('[orchestrator] Failed to report usage after 3 attempts:', err);
+            } else {
+                await sleep(1000 * Math.pow(2, i)); // 1s, 2s
+            }
+        }
+    }
 }
 
 async function processMessage(chatId: string, messageId: string, username: string, text: string): Promise<void> {
@@ -62,7 +77,7 @@ async function processMessage(chatId: string, messageId: string, username: strin
     const { reply, usage } = await generateReply(history);
 
     // Report usage
-    reportUsage('gpt-4o', usage.prompt_tokens, usage.completion_tokens);
+    reportUsage('claude-3-5-sonnet-20241022', usage.input_tokens, usage.output_tokens);
 
     // Store the assistant's reply in history
     addAssistantMessage(chatId, reply);
@@ -96,6 +111,7 @@ async function poll(): Promise<void> {
         }
     } catch (err) {
         log(`Poll error: ${err}`);
+        throw err;
     }
 }
 
@@ -123,13 +139,21 @@ async function main(): Promise<void> {
     startLetterScheduler();
 
     // Start polling loop
+    let consecutiveErrors = 0;
+
     while (true) {
         try {
             await poll();
+            consecutiveErrors = 0;
         } catch (err) {
-            log(`Loop error: ${err}`);
+            consecutiveErrors++;
+            log(`Loop error (consecutive: ${consecutiveErrors}): ${err}`);
         }
-        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+        const backoff = Math.min(consecutiveErrors * 5_000, 55_000);
+        if (backoff > 0) {
+            log(`Backing off — next poll in ${Math.round((POLL_INTERVAL + backoff) / 1000)}s`);
+        }
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL + backoff));
     }
 }
 

@@ -8,8 +8,9 @@
  *   4. Reads Raphael's daily seed from orchestrator/data/daily-seed.md (if it exists)
  *   5. Claude writes a warm, personal letter in Raphael's voice
  *   6. Saves the letter to the backend DB
- *   7. If Lob is configured, sends it as a real physical letter
- *   8. Archives the seed file so it's not used twice
+ *   7. Archives the seed file (kept on disk until after the letter is saved
+ *      successfully, so a generation failure does not destroy the seed)
+ *   8. If Lob is configured, sends it as a real physical letter
  *
  * To add your words to tomorrow's letter:
  *   Write anything into orchestrator/data/daily-seed.md
@@ -73,18 +74,30 @@ async function fetchRecentMemories(): Promise<string[]> {
     }
 }
 
-function readAndArchiveSeed(): string | null {
+function readSeed(): string | null {
     if (!fs.existsSync(SEED_FILE)) return null;
     try {
         const content = fs.readFileSync(SEED_FILE, 'utf-8').trim();
         if (!content) return null;
-        // Archive it so it's not used again
+        log(`Seed file read (${content.length} chars) — will archive after generation`);
+        return content;
+    } catch (err) {
+        log(`Warning: could not read seed file, proceeding without it: ${err}`);
+        return null;
+    }
+}
+
+function archiveSeed(): void {
+    try {
+        if (!fs.existsSync(SEED_FILE)) {
+            log('Seed file already gone — skipping archive step');
+            return;
+        }
         const archiveName = `daily-seed-${todayDateString()}.used.md`;
         fs.renameSync(SEED_FILE, path.join(DATA_DIR, archiveName));
-        log(`Seed file read and archived as ${archiveName}`);
-        return content;
-    } catch {
-        return null;
+        log(`Seed file archived as ${archiveName}`);
+    } catch (err) {
+        log(`Warning: could not archive seed file: ${err}`);
     }
 }
 
@@ -156,16 +169,20 @@ async function runDailyLetter(): Promise<void> {
     log(`Generating today's letter...`);
 
     try {
-        const [memories, seed] = await Promise.all([
-            fetchRecentMemories(),
-            Promise.resolve(readAndArchiveSeed())
-        ]);
+        // Read seed content into memory — NO filesystem changes yet.
+        // If generation or save fails, the seed file remains on disk for retry.
+        const seed = readSeed();
+
+        const memories = await fetchRecentMemories();
 
         const letterText = await generateLetter(seed, memories);
         log(`Letter generated (${letterText.length} chars)`);
 
-        // Save as DRAFT first
+        // Save as DRAFT first — seed still on disk in case this throws.
         const letterId = await saveLetterToBackend(letterText, 'DRAFT');
+
+        // Both generate and save succeeded — safe to archive the seed now.
+        archiveSeed();
 
         // Attempt physical sending via Lob
         const result = await sendLetter(letterText);

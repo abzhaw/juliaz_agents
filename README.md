@@ -316,8 +316,8 @@ Antigravity is active automatically when this workspace is open in your IDE.
 # Build and start the Claude sub-agent server
 cd cowork-mcp && npm install && npm run build && npm start
 
-# Or via PM2:
-pm2 start ecosystem.config.js --only cowork-mcp
+# Or via PM2 (dev):
+pm2 start ecosystem.dev.config.js --only cowork-mcp
 
 # Health check:
 curl http://localhost:3003/health
@@ -331,4 +331,34 @@ Connect any MCP client (orchestrator, Claude Code, etc.) to:
 
 ---
 
-*Last updated: 2026-02-22 · Maintained by Antigravity (Cowork)*
+## Process Supervision
+
+All services are managed via [pm2](https://pm2.keymetrics.io/). Two configs are provided:
+
+| Config | Command | Use case |
+|---|---|---|
+| `ecosystem.dev.config.js` | `pm2 start ecosystem.dev.config.js` | Local development (`npm run dev`) |
+| `ecosystem.config.js` | `pm2 start ecosystem.config.js` | Production (`npm run start`) |
+
+Both configs include auto-restart with exponential backoff and a 10-restart cap.
+
+```bash
+# Install pm2 globally (one-time)
+npm install -g pm2
+
+# Start all services for development
+pm2 start ecosystem.dev.config.js
+
+# View live logs
+pm2 logs
+
+# Stop all
+pm2 stop all
+
+# View status and restart counts
+pm2 status
+```
+
+---
+
+*Last updated: 2026-02-22 · Maintained by Antigravity*

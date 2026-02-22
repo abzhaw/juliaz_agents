@@ -50,18 +50,41 @@ function updateHeartbeat(peer: string) {
 }
 
 async function loadQueue(): Promise<void> {
+    // Clean up any stale .tmp file from a previous crashed write
+    try {
+        await fs.unlink(QUEUE_FILE + '.tmp');
+    } catch {
+        // File doesn't exist — that's fine
+    }
+
     try {
         const raw = await fs.readFile(QUEUE_FILE, 'utf8');
-        messages = JSON.parse(raw) as TelegramMessage[];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error('Queue file is not an array');
+        messages = parsed as TelegramMessage[];
         log(`Loaded ${messages.length} messages from queue`);
-    } catch {
+    } catch (err: any) {
+        if (err.code === 'ENOENT') {
+            // First run — no queue file yet
+            messages = [];
+            return;
+        }
+        // Corrupted or invalid — back up the bad file
+        log(`Queue file invalid (${err.message}). Backing up and starting fresh.`);
+        try {
+            await fs.rename(QUEUE_FILE, QUEUE_FILE + `.corrupted.${Date.now()}`);
+        } catch (renameErr) {
+            log(`Warning: could not back up corrupted queue file: ${renameErr}`);
+        }
         messages = [];
     }
 }
 
 async function saveQueue(): Promise<void> {
     await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(QUEUE_FILE, JSON.stringify(messages, null, 2));
+    const tmp = QUEUE_FILE + '.tmp';
+    await fs.writeFile(tmp, JSON.stringify(messages, null, 2));
+    await fs.rename(tmp, QUEUE_FILE); // atomic on POSIX filesystems
 }
 
 function log(msg: string): void {
@@ -268,19 +291,18 @@ app.get('/messages', (_req: Request, res: Response) => {
 });
 
 // Atomic poll and consume
-app.get('/consume', (req: Request, res: Response) => {
+app.get('/consume', async (req: Request, res: Response) => {
     const { target } = req.query;
     const t = (target as string) || 'julia';
     updateHeartbeat(t === 'julia' ? 'julia' : 'openclaw');
 
     const statusMatch = (t === 'julia' ? 'pending' : 'replied');
-    const nextStatus = (t === 'julia' ? 'processing' : 'replied'); // openclaw just reads
 
     const available = messages.filter(m => m.status === statusMatch);
 
     if (t === 'julia') {
         available.forEach(m => { m.status = 'processing'; });
-        if (available.length > 0) saveQueue();
+        if (available.length > 0) await saveQueue();
     }
 
     res.json({ messages: available });
