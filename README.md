@@ -296,4 +296,27 @@ Antigravity is active automatically when this workspace is open in your IDE.
 
 ---
 
+## Process Supervision
+
+The orchestrator and bridge are managed via [pm2](https://pm2.keymetrics.io/) using `ecosystem.config.js` at the repo root.
+
+```bash
+# Install pm2 globally (one-time)
+npm install -g pm2
+
+# Start both services (orchestrator + bridge) with auto-restart
+pm2 start ecosystem.config.js
+
+# View live logs from all managed processes
+pm2 logs
+
+# Stop all managed processes
+pm2 stop all
+
+# View process status and restart counts
+pm2 status
+```
+
+---
+
 *Last updated: 2026-02-21 · Maintained by Antigravity*
