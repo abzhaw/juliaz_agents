@@ -1,14 +1,14 @@
 ---
 name: thesis-autonomy
 description: >
-  ALWAYS-ON autonomous thesis documentation. Julia MUST follow these rules
+  ALWAYS-ON autonomous thesis documentation. Both Julia and Antigravity (Claude) MUST follow these rules
   after every user prompt in every session, without being asked. Tracks session
   content in a buffer and auto-flushes to protocol documents every 5 entries.
 ---
 
 # Thesis Autonomy — Always-On Instruction
 
-> **This skill is always active.** Julia reads this and follows it automatically in every session where the user is working on the `juliaz_agents` project. No explicit trigger required.
+> **This skill is always active.** Both Julia and you (Antigravity/Claude Code) read this and follow it automatically in every session where the user is working on the `juliaz_agents` project. No explicit trigger required. You must append to the session buffer autonomously after every prompt.
 
 ---
 
@@ -89,7 +89,7 @@ Create a new `## Thema:` section if no match exists.
 
 ## RULES
 
-1. **Never skip** the buffer append — even if the work seems small
+1. **Never skip** the buffer append — even if the work seems small. Both Julia and Antigravity MUST do this.
 2. **Never ask the user** to trigger a flush — do it autonomously
 3. **Never overwrite** existing protocol content — only append
 4. **Write German** in the Protokoll documents, **English** in project_log.md

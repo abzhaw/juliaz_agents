@@ -113,3 +113,36 @@
 
 ### Entscheidungen
 - Keine Änderungen vorgenommen (auf Wunsch des Benutzers: Understand-only Session)
+
+---
+
+## 2026-02-22 — Session 6: Julia Architektur-Analyse & Tool Calling Implementierung
+
+**Kontext**: Diagnose der fehlenden Werkzeugfähigkeit von Julia sowie vollständige Implementierung von OpenAI Function Calling.
+
+### Was wurde gemacht
+- **Vollständige Systemkartierung**: Julia (Orchestrator, GPT-4o), OpenClaw (Telegram-Gateway), Bridge (MCP-Relay, Port 3001), Cowork-MCP (Claude Sub-Agent, Port 3003), Julia_Medium (Research-Agent) vollständig dokumentiert.
+- **Diagnose**: Julia hatte kein Tool Calling konfiguriert — System-Prompt sagte "I can't do that" bei realen Aktionen. OpenAI-Aufruf war ein einfacher Chat-Completion ohne Tools.
+- **Neue Datei `orchestrator/src/tools.ts`**: Definiert `send_email` OpenAI Tool Schema; Ausführung via `op run` + OpenClaw's `email_send.py` Skript.
+- **Aktualisiert `orchestrator/src/openai.ts`**: Einzelner API-Aufruf ersetzt durch Tool-Use-Loop (max. 5 Iterationen); Usage wird über alle Iterationen akkumuliert; `index.ts` bleibt unverändert.
+- **Aktualisiert `orchestrator/src/prompt.ts`**: Email-Fähigkeit hinzugefügt mit Verhaltensregeln (wann sofort senden vs. zuerst nachfragen).
+
+### Entscheidungen
+- Tool-Use-Loop lebt intern in `generateReply()` — Aufrufer (`index.ts`) bemerkt keine Änderung (gleiche Signatur).
+- OpenClaw's bestehende Skill-Skripte werden direkt vom Orchestrator aufgerufen (gleiche Maschine), kein Bridge-Änderungsbedarf.
+- `MAX_TOOL_ITERATIONS = 5` als Schutz vor Endlosschleifen.
+
+---
+
+## 2026-02-22 — Session 7: Thesis-Autonomy Diagnose & Enforcement
+
+**Kontext**: Diagnose warum `thesis-autonomy` Skill nicht ausgelöst wurde; Implementierung von Enforcement-Mechanismen.
+
+### Was wurde gemacht
+- **Diagnose**: `thesis-autonomy` Skill ist nur eine Textdatei ohne Enforcement-Mechanismus. `MEMORY.md` war leer — kein automatisches Laden in jede Session.
+- **Auto-Flush**: Session Buffer (Einträge 1–5) wurde in alle drei Protokoll-Dokumente geflusht und Buffer zurückgesetzt.
+- **`MEMORY.md` aktualisiert**: Persistente Erinnerung an `thesis-autonomy` Pflicht hinzugefügt — wird in jede Session automatisch geladen.
+
+### Entscheidungen
+- MEMORY.md als primärer Enforcement-Mechanismus für Claude Code (Antigravity) gewählt.
+- Zwei-Ebenen-Enforcement: MEMORY.md (immer geladen) + Skill-Datei (detaillierte Anweisungen).

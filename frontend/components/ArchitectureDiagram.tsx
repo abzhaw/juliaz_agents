@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useMemo, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React from "react";
+import { motion } from "framer-motion";
 import ReactFlow, {
     Background,
     Controls,
@@ -18,14 +18,14 @@ import ReactFlow, {
     Node,
 } from "reactflow";
 import "reactflow/dist/style.css";
-import { User, MessageSquare, Link, Cpu, Database, Brain, Workflow, Zap, LucideIcon } from "lucide-react";
+import { User, MessageSquare, Link as LinkIcon, Cpu, Database, Brain, Zap, LucideIcon } from "lucide-react";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 interface NodeData {
     label: string;
     title?: string;
-    icon?: LucideIcon | any;
+    icon?: LucideIcon | React.ElementType;
     active?: boolean;
 }
 
@@ -101,7 +101,7 @@ const initialNodes: Node<NodeData>[] = [
         id: "bridge",
         type: "system",
         position: { x: 800, y: 300 },
-        data: { label: "The Glue", title: "MCP Bridge (Sync)", icon: Link, active: true }
+        data: { label: "The Glue", title: "MCP Bridge (Sync)", icon: LinkIcon, active: true }
     },
     {
         id: "orchestrator",
@@ -204,7 +204,7 @@ export function ArchitectureDiagram() {
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
-                onInit={(instance) => console.log("Flow initialized")}
+                onInit={() => console.log("Flow initialized")}
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 nodeTypes={nodeTypes}

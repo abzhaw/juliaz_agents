@@ -13,6 +13,7 @@ const availableSkills = [
 ];
 
 export function SkillPalette() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const onDragStart = (event: any, nodeType: string, label: string) => {
         event.dataTransfer.setData("application/reactflow", nodeType);
         event.dataTransfer.setData("application/label", label);
@@ -63,7 +64,7 @@ export function SkillPalette() {
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 blur-3xl -mr-16 -mt-16" />
                 <p className="text-xs text-blue-300 relative z-10 leading-relaxed font-medium">
                     <span className="font-bold block mb-1">Architecture Instruction</span>
-                    Drop skills onto the neural fabric and connect nodes to expand Julia's functional surface.
+                    Drop skills onto the neural fabric and connect nodes to expand Julia&apos;s functional surface.
                 </p>
             </div>
         </div>

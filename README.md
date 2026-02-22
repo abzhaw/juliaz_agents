@@ -79,13 +79,23 @@ and the AI assistant doing the building (Antigravity).
 │   │  ORCHESTRATOR — Agent Intelligence                          │   │
 │   │  Location:   ./orchestrator/                                │   │
 │   │  Role:       Thinks, Polls Bridge, Writes Backend Logs      │   │
-│   └─────────────────────────────────────────────────────────────┘   │
+│   └────────────────────┬────────────────────────────────────────┘   │
+│                         │ delegates tasks via MCP to                 │
+│   ┌─────────────────────▼──────────────────────────────────────┐    │
+│   │  COWORK MCP — Claude as a Multimodal Sub-Agent             │    │
+│   │  Location:   ./cowork-mcp/                                 │    │
+│   │  Port:       3003                                          │    │
+│   │  Role:       Wraps Anthropic Claude API as MCP tools       │    │
+│   │  Tools:      claude_task, claude_multimodal_task,          │    │
+│   │              claude_code_review, claude_summarize,         │    │
+│   │              claude_brainstorm, cowork_status              │    │
+│   └────────────────────────────────────────────────────────────┘    │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## The 5 Components
+## The 6 Components
 
 | Component | What it is | Where it runs |
 |---|---|---|
@@ -93,7 +103,8 @@ and the AI assistant doing the building (Antigravity).
 | **Bridge (`bridge/`)** | MCP glue server connecting Agents ↔ UI | MacBook — port 3001 |
 | **Backend (`backend/`)** | REST API with Postgres persistence | Docker Compose — port 3000 |
 | **Orchestrator** | Julia's primary "brain" (Loop + AI) | MacBook — independent process |
-| **OpenClaw** | Communication gateway (Telgram, etc.) | MacBook — local CLI |
+| **OpenClaw** | Communication gateway (Telegram, etc.) | MacBook — local CLI |
+| **Cowork MCP (`cowork-mcp/`)** | Claude as a multimodal sub-agent | MacBook — port 3003 |
 
 ---
 
@@ -251,8 +262,9 @@ cd bridge && npm run dev
 ```bash
 openclaw config set gateway.mode local
 openclaw onboard        # first time only
-openclaw gateway start
-openclaw health
+openclaw gateway start --force
+openclaw status
+openclaw dashboard      # open the official control panel
 ```
 
 ### 4. Antigravity (IDE Agent)
@@ -279,8 +291,9 @@ Antigravity is active automatically when this workspace is open in your IDE.
 ## Integration Rules
 
 1. **Bridge must be running** for OpenClaw ↔ orchestration to work (`port 3001`)
-2. **OpenClaw stays native** — never containerize it
-3. **Backend stays in Docker** — it's isolated by design
+2. **OpenClaw stays native** — must be kept running (Check: `openclaw status`)
+3. **Official Dashboard is core UI** — use `openclaw dashboard` for logs and channel control.
+4. **Backend stays in Docker** — it's isolated by design
 4. **Never commit `.env.secrets`** — it contains live API keys
 5. **Tests after every backend change**: `cd backend && npm test`
 6. **Never modify `.agent/skills/`** without explicit user instruction
@@ -293,7 +306,29 @@ Antigravity is active automatically when this workspace is open in your IDE.
 |---|---|
 | Bridge is stopped | `cd bridge && npm run dev` |
 | Julia has no MCP tools | Add bridge to Antigravity's MCP config (`http://localhost:3001/mcp`) |
+| Cowork MCP not starting | Check `ANTHROPIC_API_KEY` is set in `.env.secrets` |
 
 ---
 
-*Last updated: 2026-02-21 · Maintained by Antigravity*
+## Cowork MCP Quick Start
+
+```bash
+# Build and start the Claude sub-agent server
+cd cowork-mcp && npm install && npm run build && npm start
+
+# Or via PM2:
+pm2 start ecosystem.config.js --only cowork-mcp
+
+# Health check:
+curl http://localhost:3003/health
+
+# Run the example agent (requires cowork-mcp running):
+npx tsx cowork-mcp/examples/julia-calls-claude.ts
+```
+
+Connect any MCP client (orchestrator, Claude Code, etc.) to:
+- `http://localhost:3003/mcp`
+
+---
+
+*Last updated: 2026-02-22 · Maintained by Antigravity (Cowork)*

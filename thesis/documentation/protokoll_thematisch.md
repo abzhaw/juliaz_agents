@@ -124,3 +124,32 @@ Definiert durch das Kriterium: Kann Julia das mit ihren bestehenden Fähigkeiten
 - Zeigt wie KI-Agenten ethisch für vulnerable Zielgruppen gestaltet werden können
 - Beispiel für research-grounded skill design (kein Raten — alle Wünsche aus Literatur abgeleitet)
 - Demonstriert den Unterschied zwischen task-completing AI und presence-offering AI
+
+---
+
+## 🤖 Thema: Agentic Tool Use & Aktionsfähigkeit
+
+### OpenAI Function Calling in Julia
+- Julia (Orchestrator) wurde mit OpenAI Tool Calling ausgestattet — erster Schritt von reaktivem Chat-Agent zu aktivem Handlungsagenten.
+- Architektur-Muster: Tool-Use-Loop intern in `generateReply()`, Aufrufer (`index.ts`) unverändert.
+- Erstes Tool: `send_email` — sendet über OpenClaw's `email_send.py` Skript via SMTP + 1Password-Credentials.
+- Erweiterbar: Neue Tools nur in `tools.ts` hinzufügen, Loop-Logik und Orchestrator bleiben unberührt.
+
+### Diagnose: Gap zwischen Fähigkeitsanspruch und Realität
+- System-Prompt sagte "If you can't do something, say so clearly" — keine Tools = kein Handeln.
+- Fehler: Julia antwortete auf "Send an email" mit "I can't send emails directly" obwohl OpenClaw die Infrastruktur hatte.
+- Lösung: Tool-Definitionen im System-Prompt bekanntgeben + OpenAI Function Calling aktivieren.
+
+---
+
+## 📋 Thema: Dokumentations-Enforcement & Autonomie
+
+### thesis-autonomy Skill — Enforcement-Problem
+- `thesis-autonomy` Skill existiert als Textdatei aber hatte keinen technischen Enforcement-Mechanismus.
+- Claude Code (Antigravity) lädt Skills nicht automatisch — ohne MEMORY.md-Eintrag werden Skills vergessen.
+- Lösung: Persistente Anweisung in MEMORY.md eingetragen → wird in jede Session automatisch injiziert.
+
+### Zwei-Ebenen-Dokumentationssystem
+- **Kurzzeit**: `thesis/memory/session_buffer.md` — Rolling Buffer (5 Einträge → auto-flush)
+- **Langzeit**: Drei Protokoll-Dokumente (zeitlich, thematisch, project_log) — permanente Dokumentation
+- **Enforcement**: MEMORY.md-Eintrag bei Claude Code; Skill-Datei für detaillierte Anweisungen

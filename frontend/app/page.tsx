@@ -3,7 +3,7 @@ import { ChatWindow } from "@/components/ChatWindow";
 import { TaskBoard } from "@/components/TaskBoard";
 import { LogFeed } from "@/components/LogFeed";
 import { TokenMonitor } from "@/components/TokenMonitor";
-import { ProjectUpdates } from "@/components/ProjectUpdates";
+import { DevOpsPanel } from "@/components/DevOpsPanel";
 import { Zap } from "lucide-react";
 import Link from "next/link";
 
@@ -54,13 +54,13 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Bottom Row: Logs & News */}
+        {/* Bottom Row: Logs & DevOps */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 h-[350px]">
+          <div className="lg:col-span-2 h-[450px]">
             <LogFeed />
           </div>
-          <div className="lg:col-span-1 h-[350px]">
-            <ProjectUpdates />
+          <div className="lg:col-span-1 h-[450px]">
+            <DevOpsPanel />
           </div>
         </div>
       </div>

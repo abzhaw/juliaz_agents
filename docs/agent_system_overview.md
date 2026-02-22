@@ -86,7 +86,9 @@ OpenClaw (now upgraded to **OpenClawJulia**) is Julia's **communication layer**.
 
 **Current setup:**
 - Telegram is connected ✅
-- Runs natively on the Mac (not in Docker)
+- Runs natively on the Mac (as a persistent **LaunchAgent**)
+- **Always Running**: This component must be active for the entire agentic system to function. If stopped, use `openclaw gateway start --force`.
+- **Official Dashboard**: Accessible via `openclaw dashboard` (official UI for channel management and agent logs).
 - Security: only approved users can talk to the bot
 
 ---
@@ -136,7 +138,8 @@ cd backend && docker compose up -d
 | Component | Location | Runs in Docker? |
 |---|---|---|
 | Antigravity | Inside the IDE | ❌ No — lives in the editor |
-| OpenClaw | Mac, local CLI | ❌ No — must run native |
+| Antigravity | Inside the IDE | ❌ No — lives in the editor |
+| OpenClaw | Mac, local CLI | ❌ No — persistent LaunchAgent |
 | Bridge | Mac, port 3001 | ❌ No — tiny local server |
 | Backend API | Docker | ✅ Yes — API + PostgreSQL |
 

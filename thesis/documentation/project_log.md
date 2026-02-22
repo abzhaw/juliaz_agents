@@ -96,3 +96,62 @@ Julia was built for Raphael's dear friend who has cancer. This session added a s
 - `openclaw/skills/dying-wishes/SKILL.md`
 - `openclaw/skills/wish-fulfillment/SKILL.md`
 - `docs/agent_cards/wish-companion.md`
+
+---
+
+## 2026-02-22 — Julia Tool Calling: Email Capability
+
+### Context
+Julia (the orchestrator) responded to real-world action requests with "I can't do that" because there was no tool calling configured. OpenClaw already had a working `email-aberer` skill with SMTP scripts. This session wired them together.
+
+### What was done
+
+**New file: `orchestrator/src/tools.ts`**
+- Defines `send_email` OpenAI function calling schema
+- Executes via `op run --env-file=env-smtp.env -- python3 email_send.py`
+- Calls OpenClaw's existing `email_send.py` script directly (same machine, no bridge changes needed)
+- Never throws — errors become tool result strings for OpenAI to relay naturally
+
+**Updated: `orchestrator/src/openai.ts`**
+- Replaced single `client.chat.completions.create()` call with a tool-use loop (max 5 iterations)
+- Passes `tools: TOOLS, tool_choice: 'auto'` to every API call
+- Accumulates token usage across all iterations
+- Function signature unchanged — `index.ts` required zero modifications
+
+**Updated: `orchestrator/src/prompt.ts`**
+- Added `send_email` to capabilities list
+- Added Email behaviour section: when to call immediately vs. ask first; how to confirm success/failure
+
+### Key decisions
+- Tool-use loop is entirely self-contained in `generateReply()` — the caller sees no change
+- Tools run locally in the orchestrator process rather than routing through bridge/OpenClaw
+- `MAX_TOOL_ITERATIONS = 5` guards against infinite loops
+- The architecture is designed for easy extension: add new tools in `tools.ts` only
+
+### Files changed
+- `orchestrator/src/tools.ts` (new)
+- `orchestrator/src/openai.ts` (tool-use loop)
+- `orchestrator/src/prompt.ts` (capabilities + email behaviour)
+
+---
+
+## 2026-02-22 — Thesis Documentation Enforcement
+
+### Context
+The `thesis-autonomy` skill was defined but had no enforcement mechanism. Claude Code (Antigravity) was not documenting sessions because `MEMORY.md` was empty — nothing reminded it to follow the skill each session.
+
+### What was done
+- **Diagnosed** the root cause: `MEMORY.md` empty + no hook = skill ignored every session
+- **Flushed** the session buffer (5 entries: sessions 3–7) to all three protocol documents
+- **Updated `MEMORY.md`** with a mandatory reminder to always follow `thesis-autonomy` after every substantive prompt
+
+### Key decisions
+- `MEMORY.md` chosen as primary enforcement mechanism — it is automatically injected into every Claude Code session context (first 200 lines)
+- Two-level enforcement: MEMORY.md (always loaded, short instruction) + skill file (full procedure detail)
+
+### Files changed
+- `/Users/raphael/.claude/projects/-Users-raphael-Documents-Devs-juliaz-agents/memory/MEMORY.md` (updated)
+- `thesis/memory/session_buffer.md` (flushed and reset)
+- `thesis/documentation/protokoll_zeitlich.md` (appended)
+- `thesis/documentation/protokoll_thematisch.md` (appended)
+- `thesis/documentation/project_log.md` (this entry)
