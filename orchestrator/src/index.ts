@@ -96,6 +96,7 @@ async function poll(): Promise<void> {
         }
     } catch (err) {
         log(`Poll error: ${err}`);
+        throw err;
     }
 }
 
@@ -123,13 +124,21 @@ async function main(): Promise<void> {
     startLetterScheduler();
 
     // Start polling loop
+    let consecutiveErrors = 0;
+
     while (true) {
         try {
             await poll();
+            consecutiveErrors = 0;
         } catch (err) {
-            log(`Loop error: ${err}`);
+            consecutiveErrors++;
+            log(`Loop error (consecutive: ${consecutiveErrors}): ${err}`);
         }
-        await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+        const backoff = Math.min(consecutiveErrors * 5_000, 55_000);
+        if (backoff > 0) {
+            log(`Backing off — next poll in ${Math.round((POLL_INTERVAL + backoff) / 1000)}s`);
+        }
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL + backoff));
     }
 }
 
