@@ -94,25 +94,33 @@ export async function generateReply(history: Turn[]): Promise<{ reply: string; u
         } catch (err: unknown) {
             lastError = err;
 
+            // Non-retryable errors: bad request, unauthorized, forbidden.
+            if (err instanceof Anthropic.APIError && [400, 401, 403].includes(err.status)) {
+                throw err; // non-retryable
+            }
+
             // Determine wait time before the next attempt.
             const isLastAttempt = attempt === MAX_ATTEMPTS - 1;
             if (isLastAttempt) break;
 
-            let waitMs = Math.pow(2, attempt) * 1_000; // 1s, 2s, 4s
+            let waitMs = Math.pow(2, attempt) * 1_000; // 1s, 2s
 
             // On HTTP 429, honour the Retry-After header if present.
             if (
                 err instanceof Anthropic.APIError &&
                 err.status === 429
             ) {
-                const retryAfter =
-                    (err.headers as Record<string, string> | undefined)?.['retry-after'];
+                const rawHeaders = err.headers;
+                const retryAfter = rawHeaders instanceof Headers
+                    ? rawHeaders.get('retry-after')
+                    : (rawHeaders as Record<string, string> | undefined)?.['retry-after'];
                 if (retryAfter) {
                     const parsed = Number(retryAfter);
                     if (!Number.isNaN(parsed)) {
                         waitMs = parsed * 1_000;
                     }
                 }
+                waitMs = Math.min(waitMs, 60_000);
                 console.warn(
                     `[claude] Rate-limited (429). Waiting ${waitMs}ms before attempt ${attempt + 2}/${MAX_ATTEMPTS}.`,
                 );
