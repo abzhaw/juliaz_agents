@@ -52,16 +52,32 @@ function updateHeartbeat(peer: string) {
 async function loadQueue(): Promise<void> {
     try {
         const raw = await fs.readFile(QUEUE_FILE, 'utf8');
-        messages = JSON.parse(raw) as TelegramMessage[];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) throw new Error('Queue file is not an array');
+        messages = parsed as TelegramMessage[];
         log(`Loaded ${messages.length} messages from queue`);
-    } catch {
+    } catch (err: any) {
+        if (err.code === 'ENOENT') {
+            // First run — no queue file yet
+            messages = [];
+            return;
+        }
+        // Corrupted or invalid — back up the bad file
+        log(`Queue file invalid (${err.message}). Backing up and starting fresh.`);
+        try {
+            await fs.rename(QUEUE_FILE, QUEUE_FILE + `.corrupted.${Date.now()}`);
+        } catch {
+            // If rename fails (e.g. file truly doesn't exist), just continue
+        }
         messages = [];
     }
 }
 
 async function saveQueue(): Promise<void> {
     await fs.mkdir(DATA_DIR, { recursive: true });
-    await fs.writeFile(QUEUE_FILE, JSON.stringify(messages, null, 2));
+    const tmp = QUEUE_FILE + '.tmp';
+    await fs.writeFile(tmp, JSON.stringify(messages, null, 2));
+    await fs.rename(tmp, QUEUE_FILE); // atomic on POSIX filesystems
 }
 
 function log(msg: string): void {
