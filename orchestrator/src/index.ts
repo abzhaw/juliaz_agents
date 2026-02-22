@@ -15,6 +15,8 @@ import { startLetterScheduler } from './letter-scheduler.js';
 
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 5000);
 
+const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
+
 function log(msg: string, level: string = 'info'): void {
     const timestamp = new Date().toISOString();
     console.log(`[orchestrator] ${timestamp} — ${msg}`);
@@ -28,11 +30,24 @@ function log(msg: string, level: string = 'info'): void {
 }
 
 async function reportUsage(model: string, promptTokens: number, completionTokens: number): Promise<void> {
-    fetch('http://localhost:3000/usage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, promptTokens, completionTokens })
-    }).catch(() => { });
+    for (let i = 0; i < 3; i++) {
+        try {
+            const res = await fetch('http://localhost:3000/usage', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, promptTokens, completionTokens }),
+                signal: AbortSignal.timeout(5000),
+            });
+            if (res.ok) return;
+            throw new Error(`HTTP ${res.status}`);
+        } catch (err) {
+            if (i === 2) {
+                console.error('[orchestrator] Failed to report usage after 3 attempts:', err);
+            } else {
+                await sleep(1000 * Math.pow(2, i)); // 1s, 2s
+            }
+        }
+    }
 }
 
 async function processMessage(chatId: string, messageId: string, username: string, text: string): Promise<void> {

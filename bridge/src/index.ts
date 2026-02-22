@@ -50,6 +50,13 @@ function updateHeartbeat(peer: string) {
 }
 
 async function loadQueue(): Promise<void> {
+    // Clean up any stale .tmp file from a previous crashed write
+    try {
+        await fs.unlink(QUEUE_FILE + '.tmp');
+    } catch {
+        // File doesn't exist — that's fine
+    }
+
     try {
         const raw = await fs.readFile(QUEUE_FILE, 'utf8');
         const parsed = JSON.parse(raw);
@@ -290,7 +297,6 @@ app.get('/consume', async (req: Request, res: Response) => {
     updateHeartbeat(t === 'julia' ? 'julia' : 'openclaw');
 
     const statusMatch = (t === 'julia' ? 'pending' : 'replied');
-    const nextStatus = (t === 'julia' ? 'processing' : 'replied'); // openclaw just reads
 
     const available = messages.filter(m => m.status === statusMatch);
 
