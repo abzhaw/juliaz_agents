@@ -31,17 +31,19 @@ pm2 delete orchestrator 2>/dev/null
 pm2 start npm --name orchestrator -- run dev
 cd ..
 
-# 5. OpenClaw Dashboard (Official)
-echo "🦞 Opening OpenClaw Dashboard..."
-openclaw gateway start --force
-openclaw dashboard
-
-# 6. Julia Custom Dashboard (PM2)
-echo "📊 Starting Custom Dashboard..."
-cd dashboard
-pm2 delete custom-dashboard 2>/dev/null
-pm2 start npx --name custom-dashboard -- serve -p 3003 . 
+# 5. Cowork MCP — Claude as a multimodal sub-agent (port 3003)
+echo "🤖 Starting Cowork MCP..."
+cd cowork-mcp
+pm2 delete cowork-mcp 2>/dev/null
+pm2 start npm --name cowork-mcp -- run dev
 cd ..
 
-echo "✅ System initialized! Open http://localhost:3002 for Frontend or http://localhost:3003 for Live Stream."
+# 6. OpenClaw Gateway
+echo "🦞 Opening OpenClaw Gateway..."
+openclaw gateway start --force
+
+echo "✅ System initialized!"
+echo "   Frontend:   http://localhost:3002"
+echo "   Bridge MCP: http://localhost:3001/mcp"
+echo "   Cowork MCP: http://localhost:3003/mcp"
 pm2 list
