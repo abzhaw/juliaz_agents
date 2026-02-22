@@ -73,19 +73,22 @@ async function fetchRecentMemories(): Promise<string[]> {
     }
 }
 
-function readAndArchiveSeed(): string | null {
+function readSeed(): string | null {
     if (!fs.existsSync(SEED_FILE)) return null;
     try {
         const content = fs.readFileSync(SEED_FILE, 'utf-8').trim();
         if (!content) return null;
-        // Archive it so it's not used again
-        const archiveName = `daily-seed-${todayDateString()}.used.md`;
-        fs.renameSync(SEED_FILE, path.join(DATA_DIR, archiveName));
-        log(`Seed file read and archived as ${archiveName}`);
+        log(`Seed file read (${content.length} chars) — will archive after generation`);
         return content;
     } catch {
         return null;
     }
+}
+
+function archiveSeed(): void {
+    const archiveName = `daily-seed-${todayDateString()}.used.md`;
+    fs.renameSync(SEED_FILE, path.join(DATA_DIR, archiveName));
+    log(`Seed file archived as ${archiveName}`);
 }
 
 async function generateLetter(seed: string | null, memories: string[]): Promise<string> {
@@ -156,16 +159,27 @@ async function runDailyLetter(): Promise<void> {
     log(`Generating today's letter...`);
 
     try {
-        const [memories, seed] = await Promise.all([
-            fetchRecentMemories(),
-            Promise.resolve(readAndArchiveSeed())
-        ]);
+        // Read seed content into memory — NO filesystem changes yet.
+        // If generation or save fails, the seed file remains on disk for retry.
+        const seed = readSeed();
+
+        const memories = await fetchRecentMemories();
 
         const letterText = await generateLetter(seed, memories);
         log(`Letter generated (${letterText.length} chars)`);
 
-        // Save as DRAFT first
+        // Save as DRAFT first — seed still on disk in case this throws.
         const letterId = await saveLetterToBackend(letterText, 'DRAFT');
+
+        // Both generate and save succeeded — safe to archive the seed now.
+        try {
+            if (fs.existsSync(SEED_FILE)) {
+                archiveSeed();
+            }
+        } catch (archiveErr) {
+            // The letter is already saved; losing the archive step is not fatal.
+            log(`Warning: could not archive seed file: ${archiveErr}`);
+        }
 
         // Attempt physical sending via Lob
         const result = await sendLetter(letterText);
