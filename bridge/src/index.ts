@@ -66,8 +66,8 @@ async function loadQueue(): Promise<void> {
         log(`Queue file invalid (${err.message}). Backing up and starting fresh.`);
         try {
             await fs.rename(QUEUE_FILE, QUEUE_FILE + `.corrupted.${Date.now()}`);
-        } catch {
-            // If rename fails (e.g. file truly doesn't exist), just continue
+        } catch (renameErr) {
+            log(`Warning: could not back up corrupted queue file: ${renameErr}`);
         }
         messages = [];
     }
@@ -284,7 +284,7 @@ app.get('/messages', (_req: Request, res: Response) => {
 });
 
 // Atomic poll and consume
-app.get('/consume', (req: Request, res: Response) => {
+app.get('/consume', async (req: Request, res: Response) => {
     const { target } = req.query;
     const t = (target as string) || 'julia';
     updateHeartbeat(t === 'julia' ? 'julia' : 'openclaw');
@@ -296,7 +296,7 @@ app.get('/consume', (req: Request, res: Response) => {
 
     if (t === 'julia') {
         available.forEach(m => { m.status = 'processing'; });
-        if (available.length > 0) saveQueue();
+        if (available.length > 0) await saveQueue();
     }
 
     res.json({ messages: available });
