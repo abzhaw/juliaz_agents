@@ -1,0 +1,23 @@
+{
+  "orchestrator": {
+    "description": "The orchestrator (`./orchestrator/`) is Julia's central intelligence. It receives messages from the bridge, decides how to handle them, calls tools, delegates to sub-agents, and sends replies back. It runs GPT-4o as its primary AI and can delegate to Claude via the Cowork MCP."
+  },
+  "openclaw": {
+    "description": "The frontend (`./frontend/`, port 3002) is a Next.js 15 web application serving as Julia's user-facing command center."
+  },
+  "bridge": {
+    "description": "The MCP server and message queue connecting OpenClaw to the orchestration layer."
+  },
+  "backend": {
+    "description": "The backend (`./backend/`) is a REST API for task management. This is the *application Julia is building* — the deliverable product. It runs in Docker and is fully separate from the agent infrastructure."
+  },
+  "database": {
+    "description": "Persistent PostgreSQL storage for task memory and configuration."
+  },
+  "user": {
+    "description": "The human operator initiating the interaction via Telegram or Dashboard."
+  },
+  "cowork": {
+    "description": "The Cowork MCP server (`./cowork-mcp/`, port 3003) wraps the Anthropic Claude API as MCP tools. This gives Julia a second AI brain for tasks where Claude excels: complex reasoning, code review, long-form writing, multimodal analysis."
+  }
+}

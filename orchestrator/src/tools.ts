@@ -19,6 +19,10 @@ const EMAIL_SCRIPT    = join(EMAIL_SKILL_DIR, 'scripts/email_send.py');
 const EMAIL_ENV_FILE  = join(EMAIL_SKILL_DIR, 'env-smtp.env');
 
 const COWORK_MCP_URL = process.env.COWORK_MCP_URL ?? 'http://localhost:3003';
+const BRIDGE_URL = process.env.BRIDGE_URL ?? 'http://localhost:3001';
+const RAPHAEL_CHAT_ID = process.env.RAPHAEL_CHAT_ID ?? '';
+
+const EMAIL_FETCH_SCRIPT = join(EMAIL_SKILL_DIR, 'scripts/email_fetch.py');
 
 // ─── Anthropic Tool Definitions ───────────────────────────────────────────────
 
@@ -79,6 +83,56 @@ export const TOOLS: Tool[] = [
             required: ['task'],
         },
     },
+    {
+        name: 'send_telegram_message',
+        description: [
+            'Send a proactive Telegram message to a specific user.',
+            'Use this to INITIATE a message — not to reply to the current conversation.',
+            'The message is delivered through the bridge queue, then OpenClaw sends it on Telegram.',
+            'For Raphael, pass chatId "raphael" — it auto-resolves to his Telegram chat ID.',
+            'For other users, pass their numeric Telegram chatId.',
+        ].join(' '),
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                chatId: {
+                    type: 'string',
+                    description: 'Telegram chat ID of the recipient. Use "raphael" for Raphael (auto-resolved). Otherwise use the numeric Telegram chatId.',
+                },
+                text: {
+                    type: 'string',
+                    description: 'The message text to send on Telegram.',
+                },
+            },
+            required: ['chatId', 'text'],
+        },
+    },
+    {
+        name: 'fetch_email',
+        description: [
+            'Fetch recent emails from the raphael@aberer.ch inbox.',
+            'Returns subject, sender, date, and a snippet for each email.',
+            'Use this when the user asks to check email, read inbox, or look for a specific email.',
+        ].join(' '),
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                limit: {
+                    type: 'number',
+                    description: 'Number of emails to fetch (default: 5, max: 20).',
+                },
+                unread: {
+                    type: 'boolean',
+                    description: 'If true, only fetch unread emails.',
+                },
+                search: {
+                    type: 'string',
+                    description: 'Optional search filter (e.g., "from:someone@example.com" or a keyword).',
+                },
+            },
+            required: [],
+        },
+    },
 ];
 
 // ─── OpenAI Tool Definitions (for GPT-4o fallback) ───────────────────────────
@@ -106,6 +160,17 @@ interface AskClaudeArgs {
     system?: string;
 }
 
+interface SendTelegramArgs {
+    chatId: string;
+    text: string;
+}
+
+interface FetchEmailArgs {
+    limit?: number;
+    unread?: boolean;
+    search?: string;
+}
+
 // ─── Executor ─────────────────────────────────────────────────────────────────
 
 /**
@@ -120,6 +185,10 @@ export async function executeTool(name: string, rawArgs: string): Promise<string
                 return await sendEmail(args as SendEmailArgs);
             case 'ask_claude':
                 return await askClaude(args as AskClaudeArgs);
+            case 'send_telegram_message':
+                return await sendTelegramMessage(args as SendTelegramArgs);
+            case 'fetch_email':
+                return await fetchEmail(args as FetchEmailArgs);
             default:
                 return `Error: unknown tool "${name}"`;
         }
@@ -188,4 +257,66 @@ async function askClaude({ task, system }: AskClaudeArgs): Promise<string> {
     } catch (err: any) {
         return `Error calling cowork-mcp: ${err.message}`;
     }
+}
+
+async function sendTelegramMessage({ chatId, text }: SendTelegramArgs): Promise<string> {
+    const targetChatId = chatId === 'raphael'
+        ? (RAPHAEL_CHAT_ID || chatId)
+        : chatId;
+
+    console.log(`[tools] send_telegram_message → chatId=${targetChatId} text="${text.slice(0, 60)}"`);
+
+    try {
+        const res = await fetch(`${BRIDGE_URL}/reply`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chatId: targetChatId, text }),
+            signal: AbortSignal.timeout(10_000),
+        });
+
+        if (!res.ok) {
+            return `Failed to send Telegram message: bridge returned HTTP ${res.status}`;
+        }
+
+        console.log(`[tools] send_telegram_message → queued for delivery to ${targetChatId}`);
+        return `Telegram message queued for delivery to chat ${targetChatId}.`;
+    } catch (err: any) {
+        return `Error sending Telegram message: ${err.message}`;
+    }
+}
+
+async function fetchEmail({ limit = 5, unread, search }: FetchEmailArgs): Promise<string> {
+    const args = [
+        'run',
+        `--env-file=${EMAIL_ENV_FILE}`,
+        '--',
+        'python3',
+        EMAIL_FETCH_SCRIPT,
+        '--limit', String(Math.min(limit, 20)),
+        ...(unread ? ['--unread'] : []),
+        ...(search ? ['--search', search] : []),
+    ];
+
+    console.log(`[tools] fetch_email → limit=${limit} unread=${!!unread} search="${search ?? ''}"`);
+
+    const result = spawnSync('op', args, {
+        encoding: 'utf8',
+        timeout: 30_000,
+        env: { ...process.env },
+    });
+
+    if (result.error) {
+        return `Email fetch failed — process error: ${result.error.message}`;
+    }
+
+    if (result.status !== 0) {
+        const stderr = result.stderr?.trim() || '(no stderr)';
+        return `Email fetch failed (exit ${result.status}): ${stderr}`;
+    }
+
+    const output = result.stdout?.trim();
+    if (!output) return 'No emails found.';
+
+    console.log(`[tools] fetch_email → got ${output.split('\n').length} lines`);
+    return output;
 }

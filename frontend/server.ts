@@ -36,6 +36,7 @@ const PORT = isProduction
 
 const COWORK_MCP_URL = process.env.COWORK_MCP_URL ?? 'http://localhost:3003';
 const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3000';
+const BRIDGE_URL = process.env.BRIDGE_URL ?? 'http://localhost:3001';
 
 // ─── Model Registry ─────────────────────────────────────────────────────────
 
@@ -63,7 +64,8 @@ You are **not** a generic chatbot. You are one node in a multi-agent architectur
 This whole system is a research prototype — part of Raphael's thesis exploring how multiple AI agents can collaborate autonomously. You're a working proof-of-concept, not a polished product. Own that.
 
 ## Your tools
-You have three tools — use them proactively when relevant:
+You have four tools — use them proactively when relevant:
+- **send_to_orchestrator**: Route action requests to the Orchestrator Julia (your Telegram counterpart) via the message bridge. The orchestrator has integrations you don't have directly: sending emails, sending Telegram messages, reading emails. Use this whenever the user wants to send an email, send a Telegram message, read emails, or perform any action that requires the orchestrator's integrations. Pass a clear, specific request.
 - **ask_claude**: Delegate complex tasks to Claude Sonnet via the cowork-mcp server. Use for deep code review, complex analysis, brainstorming, or detailed writing. Don't delegate simple questions — answer those yourself.
 - **get_tasks**: Query the project's task board from the backend API. Use when the user asks about tasks, todos, or what needs to be done.
 - **get_memories**: Search stored memories and past context from the backend. Use when the user asks "do you remember..." or needs historical context.
@@ -73,7 +75,7 @@ When someone asks who you are or what you can do, **don't recite a bullet-point 
 - You're part of a multi-agent thesis project
 - You can talk, think, and delegate to a more powerful model (Claude) when needed
 - You have access to a task board and a memory system
-- Your Telegram counterpart handles email and other integrations
+- You can send emails, Telegram messages, and more by routing through the orchestrator Julia via the bridge
 - The whole thing is an experiment in agentic AI collaboration
 
 ## Your personality
@@ -104,6 +106,67 @@ Today's date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 
 // ─── Chat Tools ──────────────────────────────────────────────────────────────
 
 const chatTools = {
+    send_to_orchestrator: tool({
+        description:
+            'Route an action request to the Orchestrator Julia (the Telegram-side agent) via the message bridge. ' +
+            'The orchestrator has tools you do NOT have: send_email, send_telegram_message, fetch_email. ' +
+            'USE THIS when the user wants to: send an email, send a Telegram message, read emails, ' +
+            'or perform any action that requires the orchestrator\'s integrations. ' +
+            'DO NOT USE for simple questions, tasks, memories, or Claude delegation — handle those directly with your other tools. ' +
+            'Pass a clear natural-language request describing exactly what the user wants done.',
+        inputSchema: z.object({
+            message: z.string().describe(
+                'A clear, specific description of what the orchestrator should do. ' +
+                'Example: "Send an email to max@example.com with subject Hello and body Hi Max". ' +
+                'Example: "Send a Telegram message to Raphael saying: Meeting at 3pm".'
+            ),
+        }),
+        execute: async ({ message }) => {
+            try {
+                const sessionId = `web-${Date.now()}`;
+
+                // Post the request to the bridge for the orchestrator to pick up
+                const postRes = await fetch(`${BRIDGE_URL}/incoming`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chatId: sessionId,
+                        userId: 'frontend',
+                        username: 'JuliaFrontEnd',
+                        text: message,
+                    }),
+                    signal: AbortSignal.timeout(10_000),
+                });
+
+                if (!postRes.ok) {
+                    return `Error sending to orchestrator: bridge returned HTTP ${postRes.status}`;
+                }
+
+                // Poll for the orchestrator's reply (max 45s, 3s intervals)
+                for (let i = 0; i < 15; i++) {
+                    await new Promise((r) => setTimeout(r, 3000));
+                    try {
+                        const replyRes = await fetch(
+                            `${BRIDGE_URL}/pending-reply/${sessionId}?consume=true`,
+                            { signal: AbortSignal.timeout(5_000) },
+                        );
+                        if (replyRes.ok) {
+                            const data = (await replyRes.json()) as { reply: string | null };
+                            if (data.reply) return data.reply;
+                        }
+                    } catch {
+                        // Poll failed, try again
+                    }
+                }
+
+                return 'The orchestrator did not respond within 45 seconds. It may be busy or offline.';
+            } catch (err: unknown) {
+                const msg = err instanceof Error ? err.message : String(err);
+                return `Error contacting orchestrator via bridge: ${msg}`;
+            }
+        },
+    }),
+
     ask_claude: tool({
         description:
             'Delegate a complex task to Claude (a more powerful AI model) via the cowork-mcp server. ' +

@@ -1,9 +1,11 @@
 name: julia_medium
-version: 1
+version: 2
 kind: mcp-agent
 
 metadata:
-  description: Ambient link to Julia (Antigravity) focused on Medium/digest work.
+  description: >
+    Ambient research agent for tracking Medium articles relevant to the agentic
+    system project. Summarizes findings and bubbles up skill ideas to Julia.
   owner: openclaw
 
 transport:
@@ -19,6 +21,7 @@ skills:
     - julia-bridge/send
     - julia-bridge/receive
     - julia-bridge/health
+    - medium-research
 
 behaviors:
   preSend:

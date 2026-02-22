@@ -25,7 +25,7 @@ import cors from 'cors';
 import { z } from 'zod';
 // ─── Constants ────────────────────────────────────────────────────────────────
 const PORT = Number(process.env.COWORK_MCP_PORT ?? 3003);
-const DEFAULT_MODEL = process.env.CLAUDE_MODEL ?? 'claude-sonnet-4-6-20251101';
+const DEFAULT_MODEL = process.env.CLAUDE_MODEL ?? 'claude-sonnet-4-20250514';
 const MAX_TOKENS = 4096;
 const CHARACTER_LIMIT = 25_000;
 const SERVER_START_TIME = new Date().toISOString();
@@ -355,6 +355,21 @@ app.get('/health', (_req, res) => {
         uptime_since: SERVER_START_TIME,
         api_key_set: !!process.env.ANTHROPIC_API_KEY,
     });
+});
+// REST endpoint — lightweight delegation without MCP protocol overhead
+app.post('/task', async (req, res) => {
+    const { task, system, model } = req.body;
+    if (!task || typeof task !== 'string') {
+        res.status(400).json({ ok: false, error: 'task (string) is required' });
+        return;
+    }
+    try {
+        const reply = await callClaude([{ role: 'user', content: task }], typeof system === 'string' ? system : undefined, typeof model === 'string' ? model : DEFAULT_MODEL);
+        res.json({ ok: true, reply });
+    }
+    catch (err) {
+        res.status(500).json({ ok: false, error: handleError(err) });
+    }
 });
 // MCP endpoint — stateless: new server + transport per request
 app.all('/mcp', async (req, res) => {

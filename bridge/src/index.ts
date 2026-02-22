@@ -34,7 +34,7 @@ interface TelegramMessage {
     username: string;
     text: string;
     timestamp: string;
-    status: 'pending' | 'processing' | 'replied';
+    status: 'pending' | 'processing' | 'replied' | 'consumed';
     reply?: string;
 }
 
@@ -210,17 +210,20 @@ app.post('/incoming', async (req: Request, res: Response) => {
     res.json({ ok: true, messageId: message.id });
 });
 
-// OpenClaw → GET Julia's reply
+// OpenClaw / Frontend → GET Julia's reply
 app.get('/pending-reply/:chatId', async (req: Request, res: Response) => {
     const { chatId } = req.params;
+    const consume = req.query.consume === 'true';
     const replied = messages.filter((m) => m.chatId === chatId && m.status === 'replied' && m.reply);
     if (replied.length === 0) { res.json({ reply: null }); return; }
     const latest = replied[replied.length - 1]!;
-    // Don't delete — just mark as replied and keep for dashboard history
-    latest.status = 'replied';
+    // Mark as consumed if requested (used by frontend polling to prevent stale replies)
+    if (consume) {
+        latest.status = 'consumed';
+    }
     updateHeartbeat('openclaw');
     await saveQueue();
-    log(`Reply served for ${chatId}: "${(latest.reply ?? '').slice(0, 60)}"`);
+    log(`Reply served for ${chatId}${consume ? ' (consumed)' : ''}: "${(latest.reply ?? '').slice(0, 60)}"`);
     res.json({ reply: latest.reply });
 });
 

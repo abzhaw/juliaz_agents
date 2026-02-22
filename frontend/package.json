@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -n vite,api -c blue,green \"vite\" \"tsx watch server.ts\"",
+    "dev": "concurrently -n vite,api,sync -c blue,green,yellow \"vite\" \"tsx watch server.ts\" \"tsx watch scripts/docs-sync-agent.ts --watch\"",
     "build": "vite build",
     "start": "NODE_ENV=production tsx server.ts",
     "preview": "vite preview"

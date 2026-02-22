@@ -28,7 +28,7 @@ import { z } from 'zod';
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const PORT = Number(process.env.COWORK_MCP_PORT ?? 3003);
-const DEFAULT_MODEL = process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001';
+const DEFAULT_MODEL = process.env.CLAUDE_MODEL ?? 'claude-sonnet-4-20250514';
 const MAX_TOKENS = 4096;
 const CHARACTER_LIMIT = 25_000;
 const SERVER_START_TIME = new Date().toISOString();

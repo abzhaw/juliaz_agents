@@ -48,7 +48,7 @@ export function AgentStatus() {
     const isOpenClawAlive = health?.heartbeats.openclaw ? (now - new Date(health.heartbeats.openclaw).getTime() < 30000) : false;
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
             <StatusCard
                 title="Bridge Status"
                 status={health?.ok ? "ACTIVE" : "OFFLINE"}
@@ -82,7 +82,7 @@ function StatusCard({ title, status, icon, isActive }: { title: string, status: 
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-panel p-4 flex items-center space-x-4"
+            className="glass-panel p-4 flex items-center space-x-4 overflow-hidden"
         >
             <div className="p-3 bg-white/5 rounded-xl">
                 {icon}
