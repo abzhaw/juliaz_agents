@@ -3,7 +3,7 @@
  *
  * Resilience features:
  *   - 30-second AbortController timeout per attempt
- *   - Up to 3 attempts with exponential backoff (1s, 2s, 4s)
+ *   - Up to 3 attempts with exponential backoff (1s, 2s between attempts)
  *   - HTTP 429 rate-limit: honours Retry-After header, falls back to backoff
  *   - Guards against empty response.content before destructuring
  */
@@ -110,10 +110,7 @@ export async function generateReply(history: Turn[]): Promise<{ reply: string; u
                 err instanceof Anthropic.APIError &&
                 err.status === 429
             ) {
-                const rawHeaders = err.headers;
-                const retryAfter = rawHeaders instanceof Headers
-                    ? rawHeaders.get('retry-after')
-                    : (rawHeaders as Record<string, string> | undefined)?.['retry-after'];
+                const retryAfter = (err.headers as Record<string, string> | undefined)?.['retry-after'];
                 if (retryAfter) {
                     const parsed = Number(retryAfter);
                     if (!Number.isNaN(parsed)) {
