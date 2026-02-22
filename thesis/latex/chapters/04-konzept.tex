@@ -1,0 +1,53 @@
+% =============================================================================
+% Kapitel 4: Konzept und Architektur
+% =============================================================================
+
+\chapter{Konzept und Architektur}
+\label{ch:konzept}
+
+\section{Systemübersicht}
+\label{sec:konzept-uebersicht}
+
+% TODO: Gesamtarchitektur von juliaz_agents
+% - 7 Komponenten und ihre Rollen
+% - Abbildung: Systemarchitektur-Diagramm
+
+\section{Julia — Der Orchestrator}
+\label{sec:konzept-julia}
+
+% TODO: Design-Entscheidungen
+% - Warum GPT-4o als primäres Modell?
+% - Tool-Calling-Architektur
+% - Prompt-Design und Persönlichkeit
+
+\section{Kommunikationsschicht}
+\label{sec:konzept-kommunikation}
+
+% TODO: Wie kommunizieren die Agenten?
+% - Bridge (MCP-Relay)
+% - Telegram-Gateway (OpenClaw)
+% - Frontend (Next.js + Streaming)
+
+\section{Multi-Modell-Orchestrierung}
+\label{sec:konzept-multimodell}
+
+% TODO: Capability Routing in der Praxis
+% - Claude via MCP für komplexe Aufgaben
+% - GPT-4o für Orchestrierung
+% - Entscheidungslogik: welches Modell wann?
+
+\section{Skill-basierte Agenten}
+\label{sec:konzept-skills}
+
+% TODO: SOUL.md-Pattern, SKILL.md-Dateien
+% - Modularität durch Skills
+% - Forschungsbasiertes Skill-Design
+% - Beispiel: Wish Companion
+
+\section{Ambient Agents}
+\label{sec:konzept-ambient}
+
+% TODO: ADHD Agent als proaktives System
+% - Konzept: Agenten die ohne Aufforderung handeln
+% - Human-in-the-Loop für destruktive Aktionen
+% - Propose-Approve-Execute Pattern

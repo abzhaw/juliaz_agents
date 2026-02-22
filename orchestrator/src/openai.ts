@@ -9,18 +9,17 @@ import { dirname, join } from 'path';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
 import { SYSTEM_PROMPT } from './prompt.js';
-import { TOOLS, executeTool } from './tools.js';
+import { OPENAI_TOOLS, executeTool } from './tools.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, '../.env'), override: true });
 
 if (!process.env.OPENAI_API_KEY) {
-    console.error('ERROR: OPENAI_API_KEY is not set. Check orchestrator/.env');
-    process.exit(1);
+    console.warn('[openai] OPENAI_API_KEY is not set — GPT-4o fallback will be unavailable.');
 }
 
 const client = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.OPENAI_API_KEY ?? 'missing',
 });
 
 export interface Turn {
@@ -62,7 +61,7 @@ export async function generateReply(history: Turn[]): Promise<{ reply: string; u
             const response = await client.chat.completions.create({
                 model: 'gpt-4o',
                 messages,
-                tools: TOOLS,
+                tools: OPENAI_TOOLS,
                 tool_choice: 'auto',
             }, { signal: controller.signal });
 
@@ -82,8 +81,10 @@ export async function generateReply(history: Turn[]): Promise<{ reply: string; u
 
                 // Execute each tool and append the result
                 for (const toolCall of message.tool_calls) {
-                    console.log(`[openai] Tool requested: ${toolCall.function.name}(${toolCall.function.arguments})`);
-                    const result = await executeTool(toolCall.function.name, toolCall.function.arguments);
+                    if (toolCall.type !== 'function') continue;
+                    const fn = toolCall.function;
+                    console.log(`[openai] Tool requested: ${fn.name}(${fn.arguments})`);
+                    const result = await executeTool(fn.name, fn.arguments);
                     console.log(`[openai] Tool result: ${result}`);
 
                     messages.push({

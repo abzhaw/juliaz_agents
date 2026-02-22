@@ -43,6 +43,7 @@ Telegram user → OpenClaw → Bridge (REST) → Orchestration (MCP)
 | `tmux` | Manage persistent terminal sessions and multiplexing |
 | `notion` | Search and read from Notion workspaces |
 | `oracle` | Query the system Oracle for architectural or domain knowledge |
+| `email-aberer` | Send emails via SMTP using 1Password CLI for credentials |
 | `openclaw-self-manage` | Health check, gateway restart, channel diagnosis |
 | `openclaw-troubleshoot` | Decision tree for common failures |
 

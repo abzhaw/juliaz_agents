@@ -1,0 +1,64 @@
+% =============================================================================
+% Kapitel 5: Implementierung
+% =============================================================================
+
+\chapter{Implementierung}
+\label{ch:implementierung}
+
+\section{Technologie-Stack}
+\label{sec:impl-stack}
+
+% TODO: Verwendete Technologien
+% - TypeScript (Orchestrator, Bridge, Cowork-MCP)
+% - Python (OpenClaw, ADHD Agent)
+% - Next.js 15 (Frontend)
+% - PostgreSQL + Docker (Backend)
+% - PM2 (Prozessverwaltung)
+
+\section{Orchestrator-Implementierung}
+\label{sec:impl-orchestrator}
+
+% TODO: Kernlogik in orchestrator/src/
+% - openai.ts: generateReply() und Tool-Use-Loop
+% - tools.ts: Tool-Definitionen
+% - prompt.ts: Systemprompt-Generierung
+% - index.ts: Server-Setup und Routing
+
+\section{Tool-Calling-Mechanismus}
+\label{sec:impl-toolcalling}
+
+% TODO: Wie funktioniert Tool Use technisch?
+% - Request → Tool Call → Result → Loop (max 5)
+% - Beispiel: send_email
+% - Fehlerbehandlung
+
+\section{MCP-Integration}
+\label{sec:impl-mcp}
+
+% TODO: Bridge und Cowork-MCP
+% - Stateless Transport (frischer Transport pro Request)
+% - Claude als Sub-Agent via MCP
+% - Implementierungsdetails
+
+\section{Telegram-Gateway}
+\label{sec:impl-telegram}
+
+% TODO: OpenClaw-Implementierung
+% - Python-basierter Bot
+% - Skill-System
+% - Verbindung zur Bridge
+
+\section{Self-Modification}
+\label{sec:impl-selfmod}
+
+% TODO: /dev-Kommando
+% - Git Pull → Install → Restart
+% - Race Condition: Antwort vor Restart
+% - Sicherheitsüberlegungen
+
+\section{Entwicklungschronologie}
+\label{sec:impl-chronologie}
+
+% TODO: session-synthesizer nutzen
+% - 21 Sessions in 2 Tagen
+% - Meilensteine und Evolutionsschritte

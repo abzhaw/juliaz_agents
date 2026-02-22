@@ -51,19 +51,8 @@ module.exports = {
                 ...secrets
             }
         },
-        {
-            name: 'backend',
-            cwd: './backend',
-            script: 'npm',
-            args: 'run dev',
-            restart_delay: 3000,
-            exp_backoff_restart_delay: 100,
-            max_restarts: 10,
-            env: {
-                NODE_ENV: 'development',
-                ...secrets
-            }
-        },
+        // backend is managed by Docker (docker compose up -d in ./backend)
+        // Do NOT add it here — it would conflict with the Docker container on port 3000
         {
             // Cowork MCP Server — Claude as a multimodal sub-agent (port 3003)
             // Exposes claude_task, claude_multimodal_task, claude_code_review,

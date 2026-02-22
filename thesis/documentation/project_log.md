@@ -272,3 +272,402 @@ After cowork-mcp was created, a full audit of all 6 running components revealed 
 - `ecosystem.config.js`
 - `ecosystem.dev.js`
 - `.claude/launch.json` (new)
+
+---
+
+## 2026-02-22 — Sessions 12-13: Infrastructure Repair & Model Migration
+
+### Context
+Multiple infrastructure failures: EADDRINUSE crash loops on bridge (325 restarts) and backend (326 restarts), stale Docker containers missing routes, Anthropic model IDs returning 404.
+
+### What was done
+- Docker backend rebuilt to expose missing `/usage` and `/updates` routes
+- MCP transport switched from HTTP-URL to stdio (`bridge/mcp-stdio.mjs`) — eliminates startup race condition
+- Bridge hardened: atomic queue writes (write-to-tmp then rename), corrupted-queue backup
+- Orchestrator model migrated: `claude-3-5-sonnet-20241022` → `claude-haiku-4-5-20251001`
+- adhd-focus skill deduplicated: underscore → kebab-case naming
+
+### Key findings
+- Anthropic account only has Claude 4.x models — all 3.x IDs return 404
+- HTTP-URL MCP is fragile: if bridge is down at startup, entire session loses MCP silently
+
+---
+
+## 2026-02-22 — Session 14: Full System Overhaul — Tool Calling + Claude Delegation
+
+### Context
+Bridge and backend crash loops (EADDRINUSE — 325+ restarts each) needed fixing. Julia needed tool calling and Claude delegation capabilities.
+
+### What was done
+
+**Infrastructure:**
+- Backend removed from PM2 configs (Docker-only) — fixed 326-restart crash loop
+- Rogue bridge process killed — fixed 325-restart crash loop
+- `start-devops.sh` updated: starts Docker backend first, kills rogue port processes before PM2
+
+**Tool calling:**
+- `orchestrator/src/tools.ts` rewritten: Anthropic `Tool[]` format, `ask_claude` tool, dual-export for GPT-4o fallback
+- `orchestrator/src/claude.ts` rewritten: full tool-use loop (tool_use blocks, executeTool, tool_result feedback, max 5 iterations)
+- GPT-4o fallback added in `orchestrator/src/index.ts`
+- `POST /task` REST endpoint added to `cowork-mcp/src/index.ts`
+
+### Key decisions
+- Backend = Docker-only; PM2 manages bridge + orchestrator + cowork-mcp + frontend
+- Claude primary + GPT-4o fallback architecture
+- Cowork-mcp uses plain REST `/task` endpoint (not MCP protocol) for delegation simplicity
+
+### Files changed
+- `ecosystem.dev.config.js`, `start-devops.sh`
+- `orchestrator/src/tools.ts`, `claude.ts`, `openai.ts`, `index.ts`, `prompt.ts`
+- `cowork-mcp/src/index.ts`
+
+---
+
+## 2026-02-22 — Session 15: Agent Self-Knowledge Fix (send_email + 1Password)
+
+### Context
+Julia sent an email successfully but when asked "did you use 1Password?", she denied it — confabulating because her tool description didn't mention the mechanism.
+
+### What was done
+- Updated `send_email` tool description in `tools.ts` to mention OpenClaw's email-aberer skill + 1Password CLI (`op run`)
+- Updated system prompt email behaviour section in `prompt.ts` to describe the credential injection mechanism
+
+### Key finding
+Agent self-knowledge is bounded by tool descriptions and system prompts. If the description omits that 1Password is used, the agent will deny using it — not lying, but confabulating from an incomplete self-model. **Tool descriptions ARE the agent's self-knowledge about its capabilities.**
+
+### Files changed
+- `orchestrator/src/tools.ts` (description update)
+- `orchestrator/src/prompt.ts` (email mechanism explanation)
+
+---
+
+## 2026-02-22 — Session 16: Frontend Chatbot — Architecture Rethink + Vercel AI SDK
+
+### Context
+The old ChatWindow polled the bridge every 3s — a Telegram pattern, not suitable for web (slow, no streaming, wrong architecture). User requested a fundamental rethink with reasoning ability and clear model separation.
+
+### Architecture decision
+Two completely independent paths:
+- **Web**: Dashboard → `/api/chat` → GPT-4o (streaming SSE via Vercel AI SDK)
+- **Telegram**: OpenClaw → Bridge → Julia/Orchestrator (unchanged)
+
+Model selection by surface:
+| Surface | Model | Rationale |
+|---|---|---|
+| Frontend chatbot | GPT-4o | Reasoning depth, streaming, works on current API key |
+| Orchestrator/Telegram | Claude Haiku 4.5 | Fast, cheap, adequate for tool-calling |
+| Cowork-MCP | Claude Haiku 4.5 | Sub-agent for delegated tasks |
+
+### What was done
+
+**New file: `frontend/app/api/chat/route.ts`**
+- Streaming endpoint using `streamText()` from Vercel AI SDK v5 with `openai('gpt-4o')`
+- Julia-web system prompt (adapted for web: markdown OK, no Telegram length limits)
+- 3 tools: `ask_claude` (delegates to cowork-mcp `/task`), `get_tasks` (backend API), `get_memories` (backend API)
+- `send_email` deliberately excluded from frontend (security — email stays Telegram-only)
+
+**Rewritten: `frontend/components/ChatWindow.tsx`**
+- Replaced bridge polling with `useChat()` hook from `@ai-sdk/react`
+- Streaming token-by-token rendering, markdown via `react-markdown` + `remark-gfm`
+- Tool invocation indicators (spinner while calling, checkmark when done)
+- Error handling with regenerate button
+
+**New dependencies:**
+- `ai`, `@ai-sdk/openai`, `@ai-sdk/react`, `zod`, `react-markdown`, `remark-gfm`
+
+### Key findings
+- AI SDK v5 breaking changes from v4: `sendMessage` replaces `handleSubmit`, messages use `parts[]` array, tool parts are flat (no `toolInvocation` wrapper), states are `input-streaming`/`output-available` (not `call`/`result`)
+- Upgrade path to Claude Sonnet: when available, swap `@ai-sdk/openai` → `@ai-sdk/anthropic` in one line
+
+### Files created
+- `frontend/app/api/chat/route.ts`
+- `frontend/.env.local`
+
+### Files changed
+- `frontend/components/ChatWindow.tsx` (complete rewrite)
+- `frontend/package.json` (new dependencies)
+
+---
+
+## 2026-02-22 — Session 17: Documentation & Structure Cleanup
+
+### Context
+Full project structure audit to improve discoverability for both human developers and AI agents.
+
+### What was done
+- Audited the complete project tree — deleted 16 orphaned files (logs, stale scripts, superseded `dashboard/` prototype, redundant PM2 configs)
+- Created missing READMEs (orchestrator, frontend rewrite), agent cards (`adhd_agent`, `julia_medium`), `.env.example` template
+- Fixed root README (component count 4 to 7, updated directory tree), removed duplicate row in `agent_system_overview`, updated `.gitignore`
+
+### Key decisions
+- Project structure must be navigable by both human developers and AI agents — explicit READMEs and agent cards serve both audiences
+
+### Files changed
+- 16 orphaned files deleted
+- `README.md` (component count, directory tree)
+- `docs/agent_system_overview.md` (duplicate row removed)
+- `.gitignore` (updated)
+- New: `orchestrator/README.md`, `frontend/README.md`, `docs/agent_cards/adhd_agent.md`, `docs/agent_cards/julia_medium.md`, `.env.example`
+
+---
+
+## 2026-02-22 — Session 18: JuliaFrontEnd Identity & System Prompt Overhaul
+
+### Context
+The frontend chatbot and the orchestrator Julia both used the name "Julia" in all UI elements, creating confusion about which agent the user was interacting with.
+
+### What was done
+- Renamed frontend chatbot from "Julia" to "JuliaFrontEnd" in all UI labels (header, role label, thinking indicator, placeholders)
+- Rewrote system prompt to be project-aware: explains multi-agent architecture, thesis context, specific tools (`ask_claude`, `get_tasks`, `get_memories`), and Telegram counterpart
+- Chatbot still calls itself "Julia" in conversation but UI chrome distinguishes it as the frontend agent
+
+### Key decisions
+- Identity separation at UI chrome level, not conversation level — user experience remains natural
+- System prompt now carries architectural context so the frontend agent can accurately describe its place in the system
+
+### Files changed
+- `frontend/components/ChatWindow.tsx` (UI labels)
+- `frontend/app/api/chat/route.ts` (system prompt rewrite)
+
+---
+
+## 2026-02-22 — Session 19: /dev Slash Command — Self-Modification via Claude Code CLI
+
+### Context
+Julia's first self-modification capability: users can send `/dev <instruction>` via Telegram to trigger code changes directly.
+
+### What was done
+
+**New file: `orchestrator/src/dev-runner.ts`**
+- Spawns Claude Code CLI (`claude -p`) asynchronously with full permissions
+- Auth gate: restricted to Raphael's chatId (8519931474)
+- Mutex: one task at a time, 15-minute timeout
+- Reports result back to Telegram when done
+
+**New command: `/dev-status`**
+- Shows whether a dev task is currently running and its elapsed time
+
+### Architecture
+Telegram message → Bridge → Orchestrator detects `/dev` prefix → spawns Claude Code CLI → reports result back to Telegram
+
+### Key decisions
+- Claude Code CLI as execution layer — full codebase access but gated by auth and mutex
+- Asynchronous execution: user gets immediate "task started" confirmation, result arrives when done
+
+### Files created
+- `orchestrator/src/dev-runner.ts`
+
+### Files changed
+- `orchestrator/src/index.ts` (command routing)
+
+---
+
+## 2026-02-22 — Session 20: Code Review — dev-runner.ts
+
+### Context
+Brief review session of the newly created `/dev` module.
+
+### What was done
+- Reviewed `orchestrator/src/dev-runner.ts` — confirmed security layers (auth gate, mutex, timeout), spawn logic, and error handling
+
+---
+
+## 2026-02-22 — Session 21: /dev Rewrite — Git-Pull Deploy
+
+### Context
+The Claude Code CLI approach from Session 19 was replaced with a simpler, more reliable git-pull-and-restart mechanism.
+
+### What was done
+
+**Rewrote `orchestrator/src/dev-runner.ts`:**
+- Replaced Claude Code CLI spawning with git-pull-and-restart workflow
+- New flow: Raphael edits code on phone (Claude app on GitHub) → pushes to main → sends `/dev` via Telegram → orchestrator pulls, installs deps, restarts Docker + PM2
+- Uses `spawnSync` for sequential shell commands (safe, no injection risk)
+- Uses detached `spawn` for `pm2 restart all` (survives self-kill — the orchestrator is one of the processes being restarted)
+
+### Key insight
+The orchestrator must report success BEFORE restarting itself, because `pm2 restart all` kills the orchestrator process. If it reports after restart, the message is lost. This is a concrete race condition in self-modifying agent systems.
+
+### Key decisions
+- Git-pull over Claude Code CLI: simpler, works from mobile, no CLI dependency issues
+- Result message sent before restart — race-condition-aware design
+- `spawnSync` for safety (no shell injection), detached `spawn` only for the final pm2 restart
+
+### Files changed
+- `orchestrator/src/dev-runner.ts` (complete rewrite)
+
+---
+
+## 2026-02-22 — Session 22: Frontend Chatbot — Persistence, Model Selection & Best Practices
+
+### Context
+The frontend chatbot lost all messages on page refresh or orb toggle — no state persistence. This session added localStorage persistence, multi-model support, and documented production best practices.
+
+### What was done
+
+**Enhanced `ChatWindow.tsx`:**
+- Added localStorage persistence — messages survive page refresh and orb toggle
+- Implemented model selector (GPT-4o / Claude Sonnet) with context percentage indicator
+- Added "New Chat" reset button
+
+**Updated `page.tsx`:**
+- ChatWindow is now always-mounted (CSS visibility toggle instead of conditional rendering) — useChat hook state survives orb interactions
+
+**Updated `route.ts`:**
+- Multi-model backend support via model registry with `getModel()`
+- Installed `@ai-sdk/anthropic` for Claude Sonnet support
+
+**Best practices:**
+- 10 production chatbot best practices documented as TODO comments
+
+### Key decisions
+- Always-mount with CSS visibility instead of conditional rendering — React hook state preserved across parent re-renders
+- Model registry pattern for easy extension to new models
+
+### Files changed
+- `frontend/components/ChatWindow.tsx` (persistence, model selector, context indicator)
+- `frontend/app/page.tsx` (always-mount pattern)
+- `frontend/app/api/chat/route.ts` (model registry)
+- `frontend/package.json` (new dependency: @ai-sdk/anthropic)
+
+---
+
+## 2026-02-22 — Session 23: Schreiber Agent — 5 Core SKILL.md Files
+
+### Context
+The Schreiber (Master Thesis Agent) needed formalized skills for academic writing of the master's thesis.
+
+### What was done
+
+**5 SKILL.md files created** at `thesis-agent/skills/`:
+
+| Skill | Purpose |
+|---|---|
+| `thesis-structure` | Chapter architecture, section headers, page targets |
+| `draft-writer` | German academic prose, LaTeX formatting, TODO markers |
+| `research-scout` | Source discovery → `pending-papers.json` |
+| `citation-gatekeeper` | Source approval → `approved-papers.json` + `references.bib` |
+| `code-to-thesis` | Code extraction from project into thesis-ready descriptions |
+
+**Citation pipeline** enforces strict separation:
+1. `research-scout` discovers sources → writes to `pending-papers.json`
+2. `citation-gatekeeper` reviews and approves → moves to `approved-papers.json` + `references.bib`
+3. `draft-writer` uses only approved sources; unknown sources become `\cite{TODO:topic}` placeholders
+
+### Key decisions
+- Three-stage citation pipeline prevents unvetted sources from entering the thesis
+- Skills as standalone SKILL.md files — modular, independently updatable
+- German academic writing rules embedded directly in skill definitions
+
+### Files created
+- `thesis-agent/skills/thesis-structure/SKILL.md`
+- `thesis-agent/skills/draft-writer/SKILL.md`
+- `thesis-agent/skills/research-scout/SKILL.md`
+- `thesis-agent/skills/citation-gatekeeper/SKILL.md`
+- `thesis-agent/skills/code-to-thesis/SKILL.md`
+
+---
+
+## 2026-02-22 — Session 24: Schreiber Agent — 5 Additional SKILL.md Files (Batch 2)
+
+### Context
+Second batch of skills for the Schreiber agent — focus on synthesis, argumentation, visualization, and build automation.
+
+### What was done
+
+**5 additional SKILL.md files created**:
+
+| Skill | Purpose |
+|---|---|
+| `session-synthesizer` | Convert session logs/protocols into thesis-ready German academic prose; three-way distinction (planned/built/learned) |
+| `argument-advisor` | 7 review dimensions (logical gaps, unsupported claims, overclaiming, circular reasoning, missing definitions), Betreuer simulation, defense Q&A generation |
+| `figure-architect` | TikZ/PGF diagram templates for system architecture, sequence diagrams, timelines, skill hierarchies with German labels and consistent color scheme |
+| `latex-builder` | Full Mac Mini compilation setup (latexmk/biber), German package config, error handling, validation checks |
+| `thesis-tracker` | `progress.json` schema with chapter statuses and warning system |
+
+### Key decisions
+- 10 skills form the complete Schreiber skill set (5 core + 5 batch 2)
+- Betreuer simulation as a standalone review dimension — prepares for thesis defense
+- `argument-advisor` catches common academic writing pitfalls before human review
+
+### Files created
+- `thesis-agent/skills/session-synthesizer/SKILL.md`
+- `thesis-agent/skills/argument-advisor/SKILL.md`
+- `thesis-agent/skills/figure-architect/SKILL.md`
+- `thesis-agent/skills/latex-builder/SKILL.md`
+- `thesis-agent/skills/thesis-tracker/SKILL.md`
+
+---
+
+## 2026-02-22 — Session 25: Schreiber Agent — LaTeX Skeleton, Citation Workflow & Master Prompt
+
+### Context
+The Schreiber agent needed the physical LaTeX files and the infrastructure for the citation approval workflow.
+
+### What was done
+
+**LaTeX thesis skeleton:**
+- `main.tex` — German academic setup with BibLaTeX/Biber, fancyhdr, geometry
+- 7 chapter files (`01-einleitung` through `07-zusammenfassung`) with section headers and TODO markers
+
+**Citation approval infrastructure:**
+- `pending-papers.json` — staging area for discovered papers
+- `approved-papers.json` — human-approved papers only
+- `references.bib` — BibTeX entries for approved papers
+- `structure.json` — chapter outline with page targets
+- `progress.json` — tracker with word count targets totaling 25,000 words
+
+**Master prompt document:**
+- `docs/plans/2026-02-22-thesis-agent-design.md` — comprehensive prompt for recreating the Schreiber on the Mac Mini
+- Includes all 10 skills, setup instructions, and workflow examples
+- Designed as a portable document: enables agent recreation without session context
+
+### Key decisions
+- 25,000 words as total thesis target
+- Master prompt as a portable reproduction document — any machine can bootstrap the Schreiber
+- Citation infrastructure enforces human approval at every stage
+
+### Files created
+- `thesis/latex/main.tex`
+- `thesis/latex/chapters/01-einleitung.tex` through `07-zusammenfassung.tex`
+- `thesis/latex/pending-papers.json`, `approved-papers.json`, `references.bib`
+- `thesis/latex/structure.json`, `thesis/progress.json`
+- `docs/plans/2026-02-22-thesis-agent-design.md`
+
+---
+
+## 2026-02-22 — Session 26: Frontend Migration — Next.js 16 to Vite + React Router + Hono
+
+### Context
+Analysis of the frontend codebase revealed 0% SSR usage, 0 server components, and only 6 Next.js-specific imports — the framework was pure overhead for what was essentially a single-page application.
+
+### What was done
+
+**Complete frontend migration:**
+- Replaced Next.js 16 with Vite 6 (build tool) + React Router 7 (client-side routing) + Hono (API server)
+- Created Hono `server.ts` combining both API routes: `/api/chat` (streaming) + `/api/devops` (PM2 control)
+- All 9 components moved to `src/` unchanged — only `next/link` to `react-router Link` swaps needed in 2 route files
+
+**Performance results:**
+
+| Metric | Next.js | Vite + Hono |
+|---|---|---|
+| Build time | ~15-30s | 2.1s |
+| Dev server start | several seconds | 133ms |
+| Framework errors (EISDIR etc.) | frequent | eliminated |
+
+### Key decisions
+- Vite + React Router + Hono as lightweight alternative — no SSR/SSG overhead for a pure SPA
+- Hono as API layer: lightweight, Express-compatible, TypeScript-first
+- Migration confirmed principle: choose framework based on actual usage, not theoretical features
+- Data-driven decision: usage analysis before migration (0% SSR → no need for SSR framework)
+
+### Files created
+- `frontend/src/` directory structure (migrated from `frontend/app/`)
+- `frontend/server.ts` (Hono API server)
+- `frontend/vite.config.ts`
+
+### Files changed
+- `frontend/package.json` (dependencies: removed next, added vite/react-router/hono)
+- All route files (next/link → react-router Link)
+- `ecosystem.config.js` (frontend start command updated)

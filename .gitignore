@@ -1,9 +1,16 @@
-
-.env.secrets
-
+# Environment & secrets
 .env
-
+.env.local
+.env.secrets
 auth-profiles.json
+
+# Runtime logs
+*.log
+
+# Build artifacts
+dist/
+.next/
+node_modules/
 
 # git worktrees
 .worktrees/

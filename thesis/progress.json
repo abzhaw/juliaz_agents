@@ -1,0 +1,92 @@
+{
+  "thesis_title": "Agentenbasierte KI-Systeme: Multi-Agent-Orchestrierung am Beispiel von juliaz_agents",
+  "target_words": 25000,
+  "chapters": [
+    {
+      "id": "01-einleitung",
+      "title": "Einleitung",
+      "status": "leer",
+      "word_count": 0,
+      "target_words": 3000,
+      "last_modified": null,
+      "sections_complete": 0,
+      "sections_total": 4,
+      "todos": []
+    },
+    {
+      "id": "02-grundlagen",
+      "title": "Grundlagen",
+      "status": "leer",
+      "word_count": 0,
+      "target_words": 4500,
+      "last_modified": null,
+      "sections_complete": 0,
+      "sections_total": 5,
+      "todos": []
+    },
+    {
+      "id": "03-verwandte-arbeiten",
+      "title": "Verwandte Arbeiten",
+      "status": "leer",
+      "word_count": 0,
+      "target_words": 3000,
+      "last_modified": null,
+      "sections_complete": 0,
+      "sections_total": 4,
+      "todos": []
+    },
+    {
+      "id": "04-konzept",
+      "title": "Konzept und Architektur",
+      "status": "leer",
+      "word_count": 0,
+      "target_words": 5000,
+      "last_modified": null,
+      "sections_complete": 0,
+      "sections_total": 6,
+      "todos": []
+    },
+    {
+      "id": "05-implementierung",
+      "title": "Implementierung",
+      "status": "leer",
+      "word_count": 0,
+      "target_words": 5000,
+      "last_modified": null,
+      "sections_complete": 0,
+      "sections_total": 7,
+      "todos": []
+    },
+    {
+      "id": "06-evaluation",
+      "title": "Evaluation",
+      "status": "leer",
+      "word_count": 0,
+      "target_words": 3500,
+      "last_modified": null,
+      "sections_complete": 0,
+      "sections_total": 6,
+      "todos": []
+    },
+    {
+      "id": "07-zusammenfassung",
+      "title": "Zusammenfassung und Ausblick",
+      "status": "leer",
+      "word_count": 0,
+      "target_words": 2000,
+      "last_modified": null,
+      "sections_complete": 0,
+      "sections_total": 4,
+      "todos": []
+    }
+  ],
+  "overall": {
+    "total_words": 0,
+    "completion_percent": 0,
+    "uncited_claims": 0,
+    "todo_markers": 0,
+    "figures_count": 0,
+    "citations_count": 0
+  },
+  "last_updated": "2026-02-22"
+}

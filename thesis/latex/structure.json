@@ -1,0 +1,92 @@
+{
+  "thesis_title": "Agentenbasierte KI-Systeme: Multi-Agent-Orchestrierung am Beispiel von juliaz_agents",
+  "author": "Raphael",
+  "language": "de",
+  "chapters": [
+    {
+      "id": "01-einleitung",
+      "title": "Einleitung",
+      "target_pages": "8-10",
+      "sections": [
+        "Problemstellung und Motivation",
+        "Forschungsfragen",
+        "Zielsetzung und Abgrenzung",
+        "Aufbau der Arbeit"
+      ]
+    },
+    {
+      "id": "02-grundlagen",
+      "title": "Grundlagen",
+      "target_pages": "12-15",
+      "sections": [
+        "Large Language Models",
+        "Multi-Agent-Systeme",
+        "Tool Use und Function Calling",
+        "Model Context Protocol (MCP)",
+        "Capability Routing"
+      ]
+    },
+    {
+      "id": "03-verwandte-arbeiten",
+      "title": "Verwandte Arbeiten",
+      "target_pages": "8-10",
+      "sections": [
+        "Multi-Agent-Frameworks",
+        "Agentic AI in der Forschung",
+        "Empathische KI-Systeme",
+        "Abgrenzung und Positionierung"
+      ]
+    },
+    {
+      "id": "04-konzept",
+      "title": "Konzept und Architektur",
+      "target_pages": "15-20",
+      "sections": [
+        "Systemübersicht",
+        "Julia — Der Orchestrator",
+        "Kommunikationsschicht",
+        "Multi-Modell-Orchestrierung",
+        "Skill-basierte Agenten",
+        "Ambient Agents"
+      ]
+    },
+    {
+      "id": "05-implementierung",
+      "title": "Implementierung",
+      "target_pages": "15-20",
+      "sections": [
+        "Technologie-Stack",
+        "Orchestrator-Implementierung",
+        "Tool-Calling-Mechanismus",
+        "MCP-Integration",
+        "Telegram-Gateway",
+        "Self-Modification",
+        "Entwicklungschronologie"
+      ]
+    },
+    {
+      "id": "06-evaluation",
+      "title": "Evaluation",
+      "target_pages": "10-15",
+      "sections": [
+        "Evaluationsmethodik",
+        "Fallstudie: Wish Companion",
+        "Fallstudie: ADHD Agent",
+        "Fallstudie: Multi-Modell-Routing",
+        "Diskussion",
+        "Limitationen"
+      ]
+    },
+    {
+      "id": "07-zusammenfassung",
+      "title": "Zusammenfassung und Ausblick",
+      "target_pages": "5-8",
+      "sections": [
+        "Zusammenfassung",
+        "Beantwortung der Forschungsfragen",
+        "Ausblick",
+        "Reflexion"
+      ]
+    }
+  ]
+}

@@ -15,9 +15,23 @@ then
     npm install pm2 -g
 fi
 
-# Stop existing processes
+# Start backend via Docker (PostgreSQL + API on port 3000)
+echo "🐳 Starting backend via Docker..."
+(cd backend && docker compose up -d)
+
+# Stop existing PM2 processes
 echo "🧹 Cleaning up existing PM2 processes..."
 pm2 delete all 2>/dev/null
+
+# Kill any rogue processes on PM2-managed ports (3001, 3002, 3003)
+for port in 3001 3002 3003; do
+    pid=$(lsof -ti:$port 2>/dev/null)
+    if [ -n "$pid" ]; then
+        echo "   Killing rogue process on port $port (PID $pid)"
+        kill $pid 2>/dev/null
+        sleep 1
+    fi
+done
 
 if [ "$ENV" = "prod" ]; then
     echo "📦 Starting PROD configuration..."

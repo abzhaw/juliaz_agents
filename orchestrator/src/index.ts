@@ -9,9 +9,11 @@
 import 'dotenv/config';
 import { fetchPendingMessages, checkHealth, postReply } from './bridge.js';
 import { generateReply } from './claude.js';
+import { generateReply as generateReplyGpt } from './openai.js';
 import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
 import { maybeCapture } from './memory-keeper.js';
 import { startLetterScheduler } from './letter-scheduler.js';
+import { startDeploy, getStatus as getDevStatus } from './dev-runner.js';
 
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 5000);
 
@@ -66,6 +68,39 @@ async function processMessage(chatId: string, messageId: string, username: strin
         return;
     }
 
+    // ── /dev — pull from GitHub and restart all services ──────────────
+    if (text.trim().toLowerCase() === '/dev') {
+        const RAPHAEL_CHAT_ID = process.env.RAPHAEL_CHAT_ID;
+        if (!RAPHAEL_CHAT_ID) {
+            log('ERROR: /dev used but RAPHAEL_CHAT_ID is not set in .env');
+            await postReply(chatId, '⚠️ Dev mode not configured.');
+            return;
+        }
+        if (chatId !== RAPHAEL_CHAT_ID) {
+            log(`Unauthorized /dev attempt from chatId ${chatId}`);
+            await postReply(chatId, '⚠️ Not authorized.');
+            return;
+        }
+        await startDeploy(chatId);
+        return;
+    }
+
+    // ── /dev-status — check if a deploy is running ─────────────────
+    if (text.trim().toLowerCase() === '/dev-status') {
+        const RAPHAEL_CHAT_ID = process.env.RAPHAEL_CHAT_ID;
+        if (chatId !== RAPHAEL_CHAT_ID) {
+            await postReply(chatId, '⚠️ Not authorized.');
+            return;
+        }
+        const status = getDevStatus();
+        if (!status.running) {
+            await postReply(chatId, '💤 No deploy running.');
+        } else {
+            await postReply(chatId, `🚀 Deploy in progress\nStarted: ${status.startedAt}\nElapsed: ${status.elapsedSeconds}s`);
+        }
+        return;
+    }
+
     // Add the user message to history
     addUserMessage(chatId, text);
 
@@ -73,11 +108,27 @@ async function processMessage(chatId: string, messageId: string, username: strin
     maybeCapture(chatId, text); // fire-and-forget, never awaited
 
     // Get the full conversation history and generate a reply
+    // Primary: Claude Haiku — Fallback: GPT-4o (if Claude fails with non-retryable error)
     const history = getHistory(chatId);
-    const { reply, usage } = await generateReply(history);
+    let reply: string;
+    let model: string;
 
-    // Report usage
-    reportUsage('claude-haiku-4-5-20251001', usage.input_tokens, usage.output_tokens);
+    try {
+        const result = await generateReply(history);
+        reply = result.reply;
+        model = 'claude-haiku-4-5-20251001';
+        reportUsage(model, result.usage.input_tokens, result.usage.output_tokens);
+    } catch (claudeErr: any) {
+        log(`Claude failed (${claudeErr.message}), falling back to GPT-4o`);
+        try {
+            const result = await generateReplyGpt(history);
+            reply = result.reply;
+            model = 'gpt-4o';
+            reportUsage(model, result.usage.prompt_tokens, result.usage.completion_tokens);
+        } catch (gptErr: any) {
+            throw new Error(`Both Claude and GPT-4o failed. Claude: ${claudeErr.message} | GPT-4o: ${gptErr.message}`);
+        }
+    }
 
     // Store the assistant's reply in history
     addAssistantMessage(chatId, reply);

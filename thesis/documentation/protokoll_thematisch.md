@@ -241,3 +241,179 @@ Definiert durch das Kriterium: Kann Julia das mit ihren bestehenden Fähigkeiten
 - **Testbarkeit durch Separation**: `cowork-mcp` kann isoliert getestet werden (wie demonstriert: `test.mjs`)
 - Dokumentiert den Unterschied zwischen **Tight Coupling** (direkte API-Calls) und **Loose Coupling** (MCP-Tools mit Fehlerkapselung)
 
+---
+
+## 🖥️ Thema: Frontend-Chatbot & Streaming-Architektur
+
+### Architekturwandel: Polling → Streaming
+
+- **Vorher**: Frontend-Chat pollte Bridge alle 3s → Telegram-Muster (langsam, ~8-15s Roundtrip, kein Streaming)
+- **Nachher**: Eigener `/api/chat`-Endpunkt im Frontend mit Vercel AI SDK → direkte SSE-Verbindung zu GPT-4o
+- **Zwei unabhängige Pfade**: Web (Dashboard → `/api/chat` → GPT-4o) / Telegram (OpenClaw → Bridge → Julia)
+- Bridge bleibt als Telegram-Relay — Dashboard pollt sie nicht mehr
+
+### Vercel AI SDK v5 — Technische Muster
+
+| Komponente | Funktion |
+|---|---|
+| `streamText()` | Serverseitig: Stream von GPT-4o, Tool-Ausführung, SSE-Response |
+| `useChat()` | Clientseitig: React Hook für Nachrichtenzustand, Streaming-Darstellung |
+| `DefaultChatTransport` | Konfiguriert API-Endpunkt für den Chat-Hook |
+| `convertToModelMessages()` | Konvertiert UI-Format (`parts[]`) in Modell-Format |
+| `stopWhen: stepCountIs(5)` | Begrenzt Tool-Use-Iterationen |
+
+### Modellstrategie — Capability Routing nach Oberfläche
+
+| Oberfläche | Modell | Warum |
+|---|---|---|
+| Frontend-Chatbot | GPT-4o | Reasoning-Tiefe, Streaming, funktioniert mit aktuellem API-Key |
+| Orchestrator/Telegram | Claude Haiku 4.5 | Schnell, günstig, Tool-Calling ausreichend |
+| Cowork-MCP | Claude Haiku 4.5 | Sub-Agent für delegierte Aufgaben |
+
+### Agent-Selbstwissen als Designprinzip
+
+- Tool-Beschreibungen SIND das Selbstwissen des Agenten über seine Fähigkeiten
+- Unvollständige Beschreibung → Agent konfabuliert (behauptet fälschlicherweise, etwas nicht zu nutzen)
+- Kein Lügen — sondern falsches internes Modell durch fehlende Information
+- Lösung: Mechanismus-Details (z.B. 1Password, `op run`) in Tool-Beschreibungen aufnehmen
+
+### Persistenz, Modellauswahl & Best Practices (Session 22)
+
+- **localStorage-Persistenz**: Nachrichten überleben Seitenaktualisierung und Orb-Toggle
+- **Always-mount-Muster**: ChatWindow wird immer gerendert (CSS-Visibility-Toggle statt bedingtem Rendering) — useChat-Hook-Zustand bleibt erhalten
+- **Modellselektor**: GPT-4o / Claude Sonnet auswählbar im UI, Multi-Model-Backend mit `getModel()` Registry
+- **Kontextanzeige**: Prozentindikator zeigt Auslastung des Kontextfensters
+- **10 Best Practices** als TODO-Kommentare dokumentiert — Produktionsreife-Checkliste
+
+### Bedeutung für die Masterarbeit
+
+- Zeigt Evolution von **synchronem Polling** zu **asynchronem Streaming** in Multi-Agent-Frontends
+- **Surface-spezifische Modellwahl**: Nicht ein Modell für alles, sondern das beste Modell pro Anwendungsfall
+- Demonstriert Integration moderner AI SDK Patterns (Vercel AI SDK v5) in bestehendes Multi-Agent-System
+- Agent-Selbstwissen als neuartiges Designkonzept: Was ein Agent über sich selbst weiss, bestimmt die Qualität seiner Selbstauskünfte
+
+---
+
+## 🧹 Thema: Projektstruktur & Dokumentationshygiene
+
+### Strukturbereinigung (Session 17)
+- Vollständiger Audit der Projektstruktur auf Auffindbarkeit für Menschen und KI-Agenten
+- 16 verwaiste Dateien gelöscht: Logs, veraltete Skripte, `dashboard/`-Prototyp, redundante PM2-Configs
+- Fehlende READMEs (Orchestrator, Frontend), Agent Cards (`adhd_agent`, `julia_medium`), `.env.example` erstellt
+- Root README korrigiert (Komponentenanzahl 4→7), .gitignore aktualisiert
+- Prinzip: Projektstruktur muss sowohl für menschliche als auch KI-Nutzer navigierbar sein
+
+---
+
+## 🖥️ Thema: Frontend-Identität & Agent-Namensgebung
+
+### JuliaFrontEnd — Identitätstrennung (Session 18)
+- Problem: Frontend-Chatbot und Orchestrator-Julia hiessen beide "Julia" — Verwechslungsgefahr
+- Lösung: UI-Labels umbenannt zu "JuliaFrontEnd" (Header, Rollenbezeichnung, Denk-Indikator, Platzhalter)
+- System-Prompt neugeschrieben: projektbewusst — erklärt Architektur, Tools, Telegram-Pendant
+- Designentscheidung: Chatbot nennt sich in Konversation weiterhin "Julia" — Trennung nur auf UI-Chrome-Ebene
+- Bedeutung: Zeigt wie Agent-Identität in Multi-Agent-Systemen explizit verwaltet werden muss
+
+---
+
+## 🔄 Thema: Selbstmodifikation & DevOps-Automatisierung
+
+### /dev Slash Command — Julias Selbstmodifikationsfähigkeit (Sessions 19–21)
+- **Iteration 1 (Session 19)**: `/dev <instruction>` implementiert — spawnt Claude Code CLI (`claude -p`) asynchron
+  - Auth: nur Raphaels chatId, Mutex (eine Aufgabe gleichzeitig), 15-Min-Timeout
+  - `/dev-status` zur Überwachung; Architektur: Telegram → Bridge → Orchestrator → Claude Code → Ergebnis
+- **Code Review (Session 20)**: `dev-runner.ts` geprüft — Sicherheitsschichten bestätigt
+- **Iteration 2 (Session 21)**: Claude Code CLI durch Git-Pull-and-Restart ersetzt
+  - Neuer Workflow: Code auf Handy bearbeiten (Claude App) → push → `/dev` via Telegram → Orchestrator pullt, installiert, startet neu
+  - `spawnSync` für Shell-Befehle, detachter `spawn` für `pm2 restart all` (überlebt Self-Kill)
+  - Schlüsselerkenntnis: Erfolg melden BEVOR Neustart — Race-Condition-bewusstes Design
+
+### Architektonische Erkenntnisse
+- Claude Code CLI als Ausführungsschicht war fragil (Pfad-Abhängigkeiten, CLI-Version)
+- Git-Pull-Deploy ist robuster: funktioniert vom Handy, keine lokalen CLI-Abhängigkeiten
+- Selbstmodifikation erfordert explizite Behandlung des "Orchestrator startet sich selbst neu"-Problems
+
+### Bedeutung für die Masterarbeit
+- Zeigt evolutionären Designprozess: Erste Lösung verworfen, einfachere Lösung gefunden
+- Self-modifying agents als Forschungsthema: Wie gibt man einem Agenten die Fähigkeit, sich selbst zu aktualisieren?
+- Race-Condition bei Selbst-Neustart als konkretes technisches Problem dokumentiert
+
+---
+
+## 📝 Thema: Schreiber Agent & Thesis-Automatisierung
+
+### Skill-Architektur (Sessions 23–24)
+
+Der Schreiber (Master Thesis Agent) wurde mit 10 spezialisierten SKILL.md-Dateien ausgestattet, aufgeteilt in zwei Chargen:
+
+**Core-Skills (Batch 1)**:
+| Skill | Funktion |
+|---|---|
+| `thesis-structure` | Kapitelarchitektur, Abschnittsüberschriften, Seitenvorgaben |
+| `draft-writer` | Deutsche akademische Prosa, LaTeX-Formatierung, TODO-Marker |
+| `research-scout` | Quellen entdecken → `pending-papers.json` |
+| `citation-gatekeeper` | Quellen genehmigen → `approved-papers.json` + `references.bib` |
+| `code-to-thesis` | Code-Extraktion aus dem Projekt in thesisreife Beschreibungen |
+
+**Erweiterte Skills (Batch 2)**:
+| Skill | Funktion |
+|---|---|
+| `session-synthesizer` | Session-Protokolle → deutsche akademische Prosa (geplant/gebaut/gelernt) |
+| `argument-advisor` | 7 Review-Dimensionen, Betreuer-Simulation, Verteidigungsfragen |
+| `figure-architect` | TikZ/PGF-Vorlagen: Architektur, Sequenzdiagramme, Timelines |
+| `latex-builder` | Mac-Mini-Kompilierung (latexmk/biber), Fehlerbehandlung |
+| `thesis-tracker` | `progress.json`-Schema, Kapitelstatus, Warnsystem |
+
+### Zitations-Pipeline — Dreistufiges Genehmigungsverfahren
+- **Entdeckung**: `research-scout` findet Quellen → schreibt in `pending-papers.json`
+- **Genehmigung**: `citation-gatekeeper` prüft → verschiebt zu `approved-papers.json` + `references.bib`
+- **Verwendung**: `draft-writer` nutzt nur genehmigte Quellen; unbekannte Quellen als `\cite{TODO:topic}`
+- Prinzip: Kein Zitat ohne menschliche Genehmigung — verhindert halluzinierte Referenzen
+
+### LaTeX-Skelett & Infrastruktur (Session 25)
+- **main.tex**: Deutsches akademisches Setup (BibLaTeX/Biber, fancyhdr, geometry)
+- **7 Kapitel-Dateien**: `01-einleitung` bis `07-zusammenfassung` mit Abschnittsüberschriften und TODO-Markern
+- **progress.json**: Wortzahl-Tracker mit 25'000-Wörter-Gesamtziel
+- **structure.json**: Kapitelübersicht mit Seitenvorgaben
+
+### Master-Prompt als Portabilitäts-Dokument
+- `docs/plans/2026-02-22-thesis-agent-design.md` — vollständiger Prompt zur Neuerstellung des Schreibers
+- Enthält alle 10 Skills, Setup-Anweisungen, Workflow-Beispiele
+- Ermöglicht Reproduktion auf dem Mac Mini ohne Session-Kontext
+
+### Bedeutung für die Masterarbeit
+- **Skill-als-Wissen-Muster**: Agenten-Fähigkeiten als formalisierte, modulare Wissensdokumente
+- **Human-in-the-Loop-Zitation**: Verhindert das grösste Risiko bei KI-unterstütztem Schreiben (halluzinierte Quellen)
+- Betreuer-Simulation als Qualitätssicherung — Agent spielt Gegenposition
+- Portabler Master-Prompt als Muster für reproduzierbare Agenten-Konfiguration
+
+---
+
+## 🔀 Thema: Frontend-Technologie-Migration
+
+### Next.js 16 → Vite + React Router + Hono (Session 26)
+
+**Analyse**: 0% SSR-Nutzung, 0 Server Components, nur 6 Next.js-spezifische Imports — Framework-Overhead ohne Nutzen.
+
+**Migration**:
+- Next.js 16 ersetzt durch Vite 6 (Build), React Router 7 (Routing), Hono (API-Server)
+- Hono `server.ts` kombiniert beide API-Routen: `/api/chat` (Streaming) + `/api/devops` (PM2-Steuerung)
+- Alle 9 Komponenten unverändert nach `src/` verschoben — nur `next/link` → `react-router Link` in 2 Dateien
+
+**Ergebnis**:
+| Metrik | Next.js | Vite + Hono |
+|---|---|---|
+| Build-Zeit | ~15-30s | 2.1s |
+| Dev-Server-Start | mehrere Sekunden | 133ms |
+| Framework-Fehler (EISDIR etc.) | häufig | eliminiert |
+
+### Entscheidungen
+- Vite + React Router + Hono als leichtgewichtige Alternative — kein SSR/SSG-Overhead für ein reines SPA
+- Hono als API-Layer: leichtgewichtig, Express-kompatibel, TypeScript-first
+- Migration bestätigt Prinzip: Framework-Wahl anhand tatsächlicher Nutzung, nicht theoretischer Features
+
+### Bedeutung für die Masterarbeit
+- Dokumentiert datengetriebene Technologieentscheidung (Nutzungsanalyse vor Migration)
+- Zeigt wie Agenten bei Migrationen helfen: Analyse der Codebasis → Identifikation der tatsächlichen Framework-Nutzung → Migration
+- Konkretes Beispiel für "Right-sizing" der Technologie in einem Agentensystem
+

@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend — Julia Dashboard
 
-## Getting Started
+A Next.js 15 web dashboard for Julia's agent system. Features a streaming AI chatbot (GPT-4o via Vercel AI SDK), system status panels, and a dark glass-panel UI.
 
-First, run the development server:
+## Architecture
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+Browser → Next.js (port 3002) → /api/chat → GPT-4o (streaming SSE)
+                                     ↓
+                              Tools: ask_claude → cowork-mcp (port 3003)
+                                     get_tasks → backend (port 3000)
+                                     get_memories → backend (port 3000)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The frontend chatbot is **independent** from the Telegram path (OpenClaw → Bridge → Orchestrator). Both can run simultaneously.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Key Files
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| File | Purpose |
+|------|---------|
+| `app/page.tsx` | Dashboard layout — chat panel, status widgets |
+| `app/api/chat/route.ts` | Streaming chat endpoint (GPT-4o + tool calling) |
+| `components/ChatWindow.tsx` | Chat UI — `useChat()` hook, markdown rendering, tool indicators |
+| `app/globals.css` | Dark theme, glass-panel styles |
 
-## Learn More
+## Chat Tools
 
-To learn more about Next.js, take a look at the following resources:
+| Tool | What it does |
+|------|-------------|
+| `ask_claude` | Delegates complex tasks to Claude Haiku via cowork-mcp |
+| `get_tasks` | Fetches task board from backend REST API |
+| `get_memories` | Searches stored memories from backend |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Environment
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Create `frontend/.env.local`:
 
-## Deploy on Vercel
+```
+OPENAI_API_KEY=sk-proj-...
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Running
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+# Development
+npm run dev          # → http://localhost:3002
+
+# Production (via PM2)
+npx pm2 start ecosystem.config.js --only frontend
+```
+
+## Stack
+
+Next.js 15 · React 19 · Tailwind CSS 4 · Vercel AI SDK · Framer Motion · React Markdown

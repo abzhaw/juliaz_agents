@@ -20,7 +20,7 @@ and the AI assistant doing the building (Antigravity).
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
-2. [The 4 Components](#the-4-components)
+2. [The 7 Components](#the-7-components)
 3. [What Runs in Docker](#what-runs-in-docker)
 4. [What Stays on the Mac](#what-stays-on-the-mac)
 5. [Invocation Flow](#invocation-flow)
@@ -95,7 +95,7 @@ and the AI assistant doing the building (Antigravity).
 
 ---
 
-## The 6 Components
+## The 7 Components
 
 | Component | What it is | Where it runs |
 |---|---|---|
@@ -105,6 +105,7 @@ and the AI assistant doing the building (Antigravity).
 | **Orchestrator** | Julia's primary "brain" (Loop + AI) | MacBook — independent process |
 | **OpenClaw** | Communication gateway (Telegram, etc.) | MacBook — local CLI |
 | **Cowork MCP (`cowork-mcp/`)** | Claude as a multimodal sub-agent | MacBook — port 3003 |
+| **ADHD Agent (`adhd-agent/`)** | System hygiene — scans for structural drift | Ambient (not yet automated) |
 
 ---
 
@@ -197,46 +198,54 @@ openclaw logs
 juliaz_agents/
 │
 ├── README.md                          ← You are here
-├── .env.secrets                       ← API keys (never commit)
+├── .env.example                       ← All env vars reference (template)
+├── ecosystem.config.js                ← PM2 production config
+├── ecosystem.dev.config.js            ← PM2 development config
+├── start-devops.sh                    ← Start all services script
 │
-├── backend/                           ← [DOCKER] REST API being built
+├── orchestrator/                      ← Julia's brain (GPT-4o + tool calling)
+│   ├── src/openai.ts                  ← LLM client + tool-use loop
+│   ├── src/tools.ts                   ← Tool definitions + executor
+│   ├── src/prompt.ts                  ← System prompt
+│   └── src/index.ts                   ← Entry point (bridge polling)
+│
+├── frontend/                          ← Next.js dashboard (port 3002)
+│   ├── app/api/chat/route.ts          ← Streaming chat endpoint (GPT-4o)
+│   ├── components/ChatWindow.tsx      ← Chat UI with useChat() hook
+│   └── app/page.tsx                   ← Dashboard layout
+│
+├── backend/                           ← [DOCKER] REST API (port 3000)
 │   ├── src/index.ts                   ← Express entry point
 │   ├── prisma/schema.prisma           ← DB schema
-│   ├── prisma/migrations/
-│   ├── tests/
-│   ├── docker-compose.yml
-│   └── EXPORT.md                      ← Deployment guide
+│   └── docker-compose.yml
 │
-├── bridge/                            ← MCP bridge (local, port 3001)
+├── bridge/                            ← MCP bridge (port 3001)
 │   ├── src/index.ts                   ← Express + MCP server
-│   ├── data/queue.json                ← Message queue (persisted)
-│   └── README.md
+│   └── data/queue.json                ← Message queue (persisted)
 │
-├── openclaw/                          ← OpenClaw agent workspace
-│   ├── AGENTS.md                      ← Agent rules and identity
+├── cowork-mcp/                        ← Claude sub-agent (port 3003)
+│   └── src/index.ts                   ← MCP server wrapping Claude API
+│
+├── openclaw/                          ← Telegram gateway
 │   ├── SOUL.md                        ← Personality and values
-│   ├── HEURISTICS.md                  ← Self-learned rules
-│   ├── skills/
-│   │   ├── julia-relay/               ← How OpenClaw forwards to bridge
-│   │   ├── openclaw-self-manage/      ← Health check + restart
-│   │   └── openclaw-troubleshoot/     ← Diagnostic decision tree
-│   └── memory/
+│   ├── skills/julia-relay/            ← Forwards messages to bridge
+│   └── skills/openclaw-self-manage/   ← Health check + restart
 │
-├── docs/                              ← Plain-language documentation
+├── adhd-agent/                        ← System hygiene agent
+│   └── SOUL.md                        ← Core identity and rules
+│
+├── julia_medium_agent/                ← Research/article agent
+│   └── SOUL.md                        ← Personality and boundaries
+│
+├── docs/                              ← Documentation
 │   ├── agent_system_overview.md       ← Full non-technical guide
-│   └── agent_cards/                   ← One-page card per component
-│       ├── julia.md
-│       ├── openclaw.md
-│       ├── thesis_agent.md
-│       └── docs_agent.md
+│   └── agent_cards/                   ← One-page card per agent
 │
-├── thesis/                            ← Thesis agent workspace
-│   ├── research_papers/               ← Drop PDFs here (read-only)
-│   ├── drafts/                        ← Agent-written sections
-│   └── documentation/
-│
-└── .agent/
-    └── skills/                        ← Antigravity's skill library (300+)
+└── thesis/                            ← Master's thesis workspace
+    ├── research_papers/               ← Source PDFs
+    ├── drafts/                        ← Agent-written sections
+    ├── documentation/                 ← Protocol logs (DE + EN)
+    └── memory/                        ← Session buffer
 ```
 
 ---

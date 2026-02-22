@@ -14,6 +14,7 @@
  */
 import OpenAI from 'openai';
 import 'dotenv/config';
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
 async function extract(text) {
@@ -52,18 +53,50 @@ If not: {"save":false}`
     }
 }
 async function reportUsage(model, promptTokens, completionTokens) {
-    await fetch(`${BACKEND}/usage`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, promptTokens, completionTokens })
-    }).catch(() => { });
+    for (let i = 0; i < 3; i++) {
+        try {
+            const res = await fetch(`${BACKEND}/usage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model, promptTokens, completionTokens }),
+                signal: AbortSignal.timeout(5000),
+            });
+            if (res.ok)
+                return;
+            throw new Error(`HTTP ${res.status}`);
+        }
+        catch (err) {
+            if (i === 2) {
+                console.error('[memory-keeper] Failed to report usage after 3 attempts:', err);
+            }
+            else {
+                await sleep(1000 * Math.pow(2, i)); // 1s, 2s
+            }
+        }
+    }
 }
 async function saveMemory(chatId, category, content, originalText) {
-    await fetch(`${BACKEND}/memories`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chatId, category, content, originalText })
-    });
+    for (let i = 0; i < 3; i++) {
+        try {
+            const res = await fetch(`${BACKEND}/memories`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ chatId, category, content, originalText }),
+                signal: AbortSignal.timeout(5000),
+            });
+            if (res.ok)
+                return;
+            throw new Error(`HTTP ${res.status}`);
+        }
+        catch (err) {
+            if (i === 2) {
+                console.error('[memory-keeper] Failed to save memory after 3 attempts:', err);
+            }
+            else {
+                await sleep(1000 * Math.pow(2, i)); // 1s, 2s
+            }
+        }
+    }
 }
 /**
  * Call this after every user message. Runs silently in the background.

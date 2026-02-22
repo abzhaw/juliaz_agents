@@ -1,0 +1,207 @@
+% =============================================================================
+% Masterarbeit: Agentenbasierte KI-Systeme
+% Multi-Agent-Orchestrierung am Beispiel von juliaz_agents
+% Autor: Raphael
+% =============================================================================
+
+\documentclass[12pt, a4paper, twoside, openright]{report}
+
+% --- Sprache & Encoding ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage[autostyle=true, german=quotes]{csquotes}
+
+% --- Typografie ---
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{setspace}
+\onehalfspacing
+
+% --- Seitenlayout ---
+\usepackage[
+  a4paper,
+  inner=3cm,        % Bundsteg (innerer Rand)
+  outer=2.5cm,
+  top=2.5cm,
+  bottom=2.5cm
+]{geometry}
+
+% --- Kopf- und Fußzeilen ---
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\leftmark}
+\fancyhead[RO]{\rightmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% --- Literaturverwaltung (BibLaTeX + Biber) ---
+\usepackage[
+  backend=biber,
+  style=alphabetic,
+  sorting=nyt,
+  maxnames=3,
+  minnames=1
+]{biblatex}
+\addbibresource{bibliography/references.bib}
+
+% --- Code-Listings ---
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+
+\lstdefinestyle{thesis}{
+  backgroundcolor=\color{backcolour},
+  commentstyle=\color{codegreen},
+  keywordstyle=\color{codepurple}\bfseries,
+  numberstyle=\tiny\color{codegray},
+  stringstyle=\color{codegreen},
+  basicstyle=\ttfamily\small,
+  breakatwhitespace=false,
+  breaklines=true,
+  captionpos=b,
+  keepspaces=true,
+  numbers=left,
+  numbersep=5pt,
+  showspaces=false,
+  showstringspaces=false,
+  showtabs=false,
+  tabsize=2,
+  frame=single
+}
+\lstset{style=thesis}
+
+% --- Abbildungen & Tabellen ---
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\graphicspath{{figures/}}
+
+% --- TikZ für Diagramme ---
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric, fit, calc}
+
+% --- Hyperlinks ---
+\usepackage[
+  colorlinks=true,
+  linkcolor=black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+  pdfauthor={Raphael},
+  pdftitle={Agentenbasierte KI-Systeme}
+]{hyperref}
+\usepackage[ngerman]{cleveref}
+
+% --- Glossar (optional) ---
+% \usepackage[acronym, toc]{glossaries}
+% \makeglossaries
+
+% =============================================================================
+\begin{document}
+
+% --- Titelblatt ---
+\begin{titlepage}
+  \centering
+  \vspace*{2cm}
+
+  {\Large Masterarbeit}\\[1.5cm]
+
+  {\LARGE\bfseries Agentenbasierte KI-Systeme}\\[0.5cm]
+  {\Large Multi-Agent-Orchestrierung\\am Beispiel von juliaz\_agents}\\[3cm]
+
+  {\large vorgelegt von}\\[0.5cm]
+  {\Large Raphael}\\[2cm]
+
+  % TODO: Universität, Studiengang, Betreuer eintragen
+  {\large
+    Fachhochschule Vorarlberg\\
+    Studiengang: [Studiengang]\\[1cm]
+    Betreuer: [Name des Betreuers]\\
+    Zweitprüfer: [Name des Zweitprüfers]\\[1cm]
+    Dornbirn, \today
+  }
+\end{titlepage}
+
+% --- Eidesstattliche Erklärung ---
+\chapter*{Eidesstattliche Erklärung}
+\thispagestyle{empty}
+
+Ich erkläre hiermit an Eides statt, dass ich die vorliegende Masterarbeit selbstständig und ohne fremde Hilfe verfasst und keine anderen als die angegebenen Quellen und Hilfsmittel benutzt habe. Die aus fremden Quellen direkt oder indirekt übernommenen Gedanken sind als solche kenntlich gemacht.
+
+Die Arbeit wurde bisher weder im In- noch im Ausland in gleicher oder ähnlicher Form einer anderen Prüfungsbehörde vorgelegt und auch noch nicht veröffentlicht.
+
+\vspace{3cm}
+\noindent
+Dornbirn, am \hrulefill \\[1cm]
+\noindent
+\hrulefill \\
+(Unterschrift)
+
+\newpage
+
+% --- Kurzfassung (Deutsch) ---
+\chapter*{Kurzfassung}
+\addcontentsline{toc}{chapter}{Kurzfassung}
+
+% TODO: Deutsche Kurzfassung schreiben (max. 1 Seite)
+
+\newpage
+
+% --- Abstract (English) ---
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+% TODO: English abstract (max. 1 page)
+
+\newpage
+
+% --- Inhaltsverzeichnis ---
+\tableofcontents
+\newpage
+
+% --- Abbildungsverzeichnis ---
+\listoffigures
+\addcontentsline{toc}{chapter}{Abbildungsverzeichnis}
+\newpage
+
+% --- Tabellenverzeichnis ---
+\listoftables
+\addcontentsline{toc}{chapter}{Tabellenverzeichnis}
+\newpage
+
+% --- Listings-Verzeichnis ---
+\lstlistoflistings
+\addcontentsline{toc}{chapter}{Quellcodeverzeichnis}
+\newpage
+
+% =============================================================================
+% HAUPTTEIL
+% =============================================================================
+
+\input{chapters/01-einleitung}
+\input{chapters/02-grundlagen}
+\input{chapters/03-verwandte-arbeiten}
+\input{chapters/04-konzept}
+\input{chapters/05-implementierung}
+\input{chapters/06-evaluation}
+\input{chapters/07-zusammenfassung}
+
+% =============================================================================
+% ANHANG & LITERATUR
+% =============================================================================
+
+% --- Literaturverzeichnis ---
+\printbibliography[heading=bibintoc, title={Literaturverzeichnis}]
+
+% --- Anhang (optional) ---
+% \appendix
+% \input{chapters/anhang}
+
+\end{document}
