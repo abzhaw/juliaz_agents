@@ -153,3 +153,91 @@ Definiert durch das Kriterium: Kann Julia das mit ihren bestehenden Fähigkeiten
 - **Kurzzeit**: `thesis/memory/session_buffer.md` — Rolling Buffer (5 Einträge → auto-flush)
 - **Langzeit**: Drei Protokoll-Dokumente (zeitlich, thematisch, project_log) — permanente Dokumentation
 - **Enforcement**: MEMORY.md-Eintrag bei Claude Code; Skill-Datei für detaillierte Anweisungen
+
+---
+
+## 🧹 Thema: Autonome Systemhygiene & Ambient Agents
+
+### ADHD Agent — Konzept
+- Agenten produzieren Komplexität (Skills, Duplikate, Bloat) schneller als Menschen sie bereinigen können
+- Lösung: Ein dedizierter Ambient Agent überwacht das System kontinuierlich und schlägt Bereinigungen vor
+- Kernprinzip: **Erkennen ≠ Handeln** — Agent schlägt vor, Mensch entscheidet
+
+### Architekturmuster: Human-in-the-Loop bei destruktiven Operationen
+- Jede vorgeschlagene Änderung geht über Telegram an Raphael (YES/NO/LATER)
+- Genehmigte Aktionen landen in `memory/approved_actions.txt` — Antigravity führt aus
+- Zweischichtige Sicherheit: Telegram-Genehmigung + Antigravity-Ausführung mit Sichtbarkeit
+
+### Technisches Muster: Bridge-Aware Polling
+- Problem: Zwei Prozesse (ADHD Agent + OpenClaw) können nicht beide `getUpdates` pollen — sie stehlen sich gegenseitig Nachrichten
+- Lösung: ADHD Agent sendet via Bot API, empfängt über Bridge REST (`/queues/julia`)
+- OpenClaw verarbeitet alle eingehenden Telegram-Nachrichten und leitet sie an die Bridge weiter — ADHD Agent pollt dort
+- Dieses Muster zeigt wie Agenten sich über geteilte Infrastruktur koordinieren müssen
+
+### Bedeutung für Masterarbeit
+- Zeigt **Eigenverantwortung im Multi-Agent-System**: Kein Mensch kann jeden Agenten dauerhaft beaufsichtigen
+- **Ambient Computing**: Agenten, die kontinuierlich im Hintergrund arbeiten ohne explizite Anfragen
+- **Trust-by-Design**: System baut Vertrauen durch Transparenz (Telegram-Vorschläge) statt blinde Automatisierung
+- Dokumentiert den Unterschied zwischen reaktiven Agenten (warten auf Befehl) und proaktiven Agenten (beobachten, vorschlagen)
+
+---
+
+## 📐 Thema: Skill-Design & Planung (adhd-focus)
+
+### Silver Lining als Planungsinstrument
+- Jede Session beginnt mit einer Pflichtfrage: "Was ermöglicht dieser Task wenn er gelingt?"
+- Ergebnis: ein Silver Lining-Satz — "Wir tun X damit Y Z kann, weil W"
+- Verhindert lokale Optimierung auf Kosten des Gesamtsystems
+
+### 5-Schritt-Ritual
+1. **Zoom Out**: 5-Whys, First Principles oder Outcome Mapping
+2. **Problem Map**: Bekanntes, Annahmen, Unbekanntes, Risiken, Julia-Implikationen
+3. **Silver Lining**: Ein Satz, der als Maßstab für alle Entscheidungen gilt
+4. **Sessionplan**: Scope (IN/OUT), Schritte, Done-When, Risiken
+5. **Julia Sync**: Bridge-Status, beteiligte Agenten, Kontext-Übergabe
+
+### Bedeutung für Masterarbeit
+- Strukturiertes Denken als Vorbedingung für agentenbasiertes Handeln
+- Zeigt wie Agenten nicht nur ausführen, sondern auch planen müssen
+
+---
+
+## 🤝 Thema: Multi-Modell-Orchestrierung & MCP-Integration
+
+### Cowork MCP — Claude als Peer-Agent
+
+- Julia wurde bisher als **Single-Model-System** betrieben (GPT-4o als einziges KI-Modell)
+- Mit `cowork-mcp` wird Julia zum **Multi-Modell-System**: Orchestrator kann Aufgaben gezielt an Claude (Anthropic) oder GPT-4o (OpenAI) delegieren
+- Architekturmuster: **Capability Routing** — Jedes Modell hat Stärken (Claude: Multimodal/Vision, Code Review; GPT-4o: Primär-Loop/Conversation)
+
+### MCP als Integrationslayer
+
+- **MCP (Model Context Protocol)** als universelles Protokoll: Agenten kommunizieren über Tools, nicht über direkte API-Aufrufe
+- `cowork-mcp` exposes Claude als 6 typisierte Tools — jeder Agent im System kann Claude nutzen ohne die Anthropic API direkt zu kennen
+- Stateless Transport: Jeder Request erzeugt einen neuen Transport — keine Session-Affinity-Probleme, horizontal skalierbar
+- Transport-Typ: Streamable HTTP (Port 3003) — konsistent mit dem bestehenden Bridge-Pattern (Port 3001)
+
+### Tool-Design-Prinzipien im cowork-mcp
+
+| Tool | Stärke | Einsatzbeispiel |
+|---|---|---|
+| `claude_task` | Allgemein: Reasoning, Schreiben, Analyse | Julia delegiert komplexe Schreibaufgaben |
+| `claude_multimodal_task` | Vision: Bilder + Text | Screenshot-Analyse, OCR, Diagramm-Interpretation |
+| `claude_code_review` | Strukturiert: Severity-Ratings | Automatisches Code-Review in CI-Workflows |
+| `claude_summarize` | Effizient: Kontextreduktion | Lange Logs / Dokumente vor Weiterverarbeitung kürzen |
+| `claude_brainstorm` | Kreativ: Ideengenerierung | Planung neuer Features oder Lösungsansätze |
+| `cowork_status` | Betrieb: Health Check | Erreichbarkeit des Sub-Agenten prüfen |
+
+### Fehlerresilienz im Multi-Agent-System
+
+- `cowork-mcp` gibt bei API-Fehler (Rate Limit, Billing, Timeout) immer einen sauberen Textstring zurück — kein uncaught Exception
+- Orchestrator und Sub-Agent sind **entkoppelt**: Fehler im Sub-Agent crashen nicht den Hauptloop
+- `CHARACTER_LIMIT = 25'000` Zeichen: Schutz für nachgelagerte Kontextfenster (GPT-4o, Claude)
+
+### Bedeutung für die Masterarbeit
+
+- Zeigt praktisch wie **Modell-Heterogenität** in Multi-Agent-Systemen implementiert wird
+- **MCP als Abstraktionslayer**: Tools abstrahieren Modell-Details — der Orchestrator kennt kein SDK, nur Toolnamen
+- **Testbarkeit durch Separation**: `cowork-mcp` kann isoliert getestet werden (wie demonstriert: `test.mjs`)
+- Dokumentiert den Unterschied zwischen **Tight Coupling** (direkte API-Calls) und **Loose Coupling** (MCP-Tools mit Fehlerkapselung)
+

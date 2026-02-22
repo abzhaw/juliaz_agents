@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "_comment": "ADHD Agent exception rules. Edit this file to suppress false-positive findings.",
+
+  "cross_registry_intentional": [
+    {
+      "normalized_name": "adhd-focus",
+      "reason": "Intentionally in both .claude/skills (Cowork/Claude Desktop) and .skills/skills (Antigravity/Julia). Different agents read different registries — Cowork reads .claude/skills, Antigravity reads .skills/skills. Both need this skill for the planning ritual.",
+      "added": "2026-02-22"
+    }
+  ],
+
+  "registry_pair_rules": [
+    {
+      "registry_a_pattern": ".claude/skills",
+      "registry_b_pattern": ".skills/skills",
+      "reason": "These two registries serve fundamentally different agents: .claude/skills is for Cowork (Claude Desktop), .skills/skills is for Antigravity (Julia). Cross-registry duplicates between them are ALWAYS intentional — the skill exists in both so both agents can use it independently.",
+      "added": "2026-02-22"
+    }
+  ]
+}

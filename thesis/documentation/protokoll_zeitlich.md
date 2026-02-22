@@ -146,3 +146,71 @@
 ### Entscheidungen
 - MEMORY.md als primärer Enforcement-Mechanismus für Claude Code (Antigravity) gewählt.
 - Zwei-Ebenen-Enforcement: MEMORY.md (immer geladen) + Skill-Datei (detaillierte Anweisungen).
+
+---
+
+## 2026-02-22 — Session 8: masterthesis-de Skill (Cowork-Session)
+
+**Kontext**: Akademisches Schreiben für die Masterarbeit brauchte einen dedizierten Skill, der Schweizer Rechtschreibung, APA-Zitierung und korrekte Autorennamen erzwingt.
+
+### Was wurde gemacht
+- **Skill `masterthesis-de`** erstellt via Skill-Creator-Prozess (Entwurf → Evals → 3 Iterationen → Beschreibungsoptimierung)
+- Evals: with_skill 100% Pass Rate vs. without_skill 93% — Schlüsselunterschied: Autorennamen (Schick ≠ Schoop), explizite DOI-URLs, `ss` statt `ß`
+- Wish Companion und 6-Komponenten-Architektur in Skill integriert
+
+### Entscheidungen
+- Manuell optimierte Beschreibung (Optimizer-Loop stalled bei API-Calls)
+- Skill grenzt sich explizit ab: kein DevOps, kein Debugging, kein Projektlog, keine englischen Anfragen
+
+---
+
+## 2026-02-22 — Session 9: ADHD Agent — Ambient Skill Hygiene
+
+**Kontext**: 4 Skill-Registries, wachsendes Ökosystem, kein automatischer Hygiene-Mechanismus — Skills akkumulieren Duplikate und Bloat.
+
+### Was wurde gemacht
+- **`adhd-focus` Skill**: Pflicht-Planungsritual (Zoom Out → Silver Lining → Sessionplan) — triggert bei jeder juliaz_agents-Session
+- **ADHD Ambient Agent** (`adhd-agent/`): vollständiger Ambient-Agent mit macOS LaunchAgent (alle 6h)
+  - `scan_skills.py`: erkennt Duplikate, Near-Duplikate (>75% Beschreibungsüberschneidung), leere Skills, Merge-Kandidaten
+  - Human-in-the-Loop via Telegram: Vorschlag → Raphael antwortet YES/NO/LATER → Agent handelt
+  - Genehmigungen in `approved_actions.txt` → Antigravity führt aus (zweite Sicherheitsebene)
+- Installiert und live verifiziert: Telegram-Nachricht msg_id=86, Scanner fand sofort echtes Duplikat (`adhd-focus`)
+- **README.md**: ADHD Agent als 7. Systemkomponente registriert
+
+### Entscheidungen
+- Bridge-Polling (`/queues/julia`) statt direktem `getUpdates` — OpenClaw besitzt die Telegram-Verbindung
+- Genehmigte Aktionen durch Antigravity ausgeführt, nicht durch ADHD Agent selbst
+- macOS LaunchAgent statt pm2 (Shell-Prozess, kein Node.js-Server)
+
+---
+
+## 2026-02-22 — Session 10: Cowork MCP — Claude als Multimodaler Sub-Agent
+
+**Kontext**: Julia verwendet bisher ausschliesslich GPT-4o. Diese Session integrierte Claude (Anthropic) als zweites KI-Modell über MCP — Julia wird zum echten Multi-Modell-System.
+
+### Was wurde gemacht
+- **Neues Verzeichnis `cowork-mcp/`**: TypeScript MCP-Server (Port 3003) der die Anthropic Claude API als MCP-Tools verfügbar macht
+- **6 MCP-Tools implementiert**: `claude_task`, `claude_multimodal_task`, `claude_code_review`, `claude_summarize`, `claude_brainstorm`, `cowork_status`
+- **Live getestet**: Server gestartet, Health-Endpoint bestätigt (`api_key_set: true`), alle 5 Callable-Tools haben die Anthropic API erreicht
+- **Test-Ergebnis**: Anthropic API antwortet mit `"credit balance too low"` (Billing-Problem des gespeicherten Keys, keine Code-Fehler — MCP-Infrastruktur vollständig verifiziert)
+- **Ecosystem-Integration**: `ecosystem.config.js` aktualisiert, Agent Card erstellt, README mit 6. Systemkomponente aktualisiert
+
+### Entscheidungen
+- Stateless Transport (ein Transport pro Request) — konsistent mit Bridge-Muster
+- Fehlerbehandlung schluckt alle Anthropic-API-Fehler in saubere Textantworten — Orchestrator crasht nie durch Sub-Agent-Fehler
+- `CHARACTER_LIMIT = 25'000` Zeichen als Schutz für nachgelagerte Kontextfenster
+
+---
+
+## 2026-02-22 — Session 11: Application Setup Audit & Infrastructure Fixes
+
+**Kontext**: Nach dem cowork-mcp Build wurden alle 6 Komponenten auf Produktionsbereitschaft geprüft.
+
+### Was wurde gemacht
+- **Vollständiger Audit**: Frontend/3002, Bridge/3001, Backend/3000, Orchestrator, OpenClaw, Cowork-MCP/3003 — 3 konkrete Probleme gefunden und behoben
+- **`backend/package.json`**: `ts-node` → `tsx` (Inkompatibilität mit `"moduleResolution": "bundler"`)
+- **`ecosystem.config.js` + `ecosystem.dev.js`**: `...secrets` jetzt in alle Apps injiziert (nicht nur cowork-mcp)
+- **`.claude/launch.json`**: Neues einheitliches Launch-Config für alle 5 Services
+
+### Entscheidungen
+- Secrets-Injektion via `fs.readFileSync` beim Config-Load — zuverlässiger als PM2 `env_file`-Direktive

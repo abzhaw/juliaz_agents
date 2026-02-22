@@ -62,7 +62,7 @@ export async function generateReply(history: Turn[]): Promise<{ reply: string; u
         try {
             const response = await client.messages.create(
                 {
-                    model: 'claude-3-5-sonnet-20241022',
+                    model: 'claude-haiku-4-5-20251001',
                     max_tokens: 1024,
                     system: SYSTEM_PROMPT,
                     messages: history.map((m) => ({

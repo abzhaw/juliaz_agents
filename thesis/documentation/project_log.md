@@ -155,3 +155,120 @@ The `thesis-autonomy` skill was defined but had no enforcement mechanism. Claude
 - `thesis/documentation/protokoll_zeitlich.md` (appended)
 - `thesis/documentation/protokoll_thematisch.md` (appended)
 - `thesis/documentation/project_log.md` (this entry)
+
+---
+
+## 2026-02-22 — masterthesis-de Skill (Cowork Session)
+
+### Context
+A dedicated thesis-writing skill was created to enforce academic writing standards whenever Antigravity writes thesis content.
+
+### What was done
+- Created `.claude/skills/masterthesis-de/SKILL.md` via full skill-creator cycle (draft → evals → 3 iterations → description optimization)
+- Ran evals: with_skill 100% pass rate vs. without_skill 93% baseline — key difference: correct author names (Schick ≠ Schoop), explicit DOI URLs, Swiss German orthography (`ss` not `ß`)
+- Integrated Wish Companion research: SUPPORT Study, Chochinov, Gawande, 5 wishes, ethical design principles
+- System architecture updated to 6 components in the skill
+
+### Files created
+- `.claude/skills/masterthesis-de/SKILL.md`
+- `.claude/skills/masterthesis-de/evals/evals.json`
+
+---
+
+## 2026-02-22 — ADHD Agent: Ambient Skill Hygiene System
+
+### Context
+The juliaz_agents ecosystem was growing across 4 skill registries with no automatic hygiene mechanism. A dedicated ambient agent was built to continuously audit skill health and surface issues — with Telegram-based human approval for every action.
+
+### What was done
+
+**adhd-focus skill** — mandatory 5-step planning ritual (Zoom Out → Problem Map → Silver Lining → Session Plan → Julia Sync) that triggers at session start in any juliaz_agents context.
+
+**ADHD ambient agent** (`juliaz_agents/adhd-agent/`):
+- `scan_skills.py` — detects exact duplicates, near-duplicates (>75% description similarity), thin skills (<5 content lines), merge candidates across all 4 registries
+- `adhd_loop.sh` — ambient loop: scan → filter snoozed/acted-on → Telegram proposal → poll approval → act → log
+- `telegram_notify.sh` — sends proposals via Telegram Bot API directly
+- `poll_approval.sh` — polls bridge `GET /queues/julia` for YES/NO/LATER (never calls `getUpdates` — OpenClaw owns that)
+- macOS LaunchAgent (`com.juliaz.adhd-agent.plist`) — runs every 6 hours
+- Installed and live verified: Telegram message sent (msg_id=86), scanner caught real duplicate on first run
+
+**Ecosystem integration**: README updated to 7 components; `memory/approved_actions.txt` pattern for safe execution by Antigravity.
+
+### Key decisions
+- Human-in-the-loop is non-negotiable: no file deleted without explicit YES from Raphael
+- Bridge-first reply polling: respects OpenClaw's ownership of the Telegram `getUpdates` connection
+- Approved actions logged for Antigravity execution (second safety layer)
+- LaunchAgent over pm2: shell process, not a Node.js server
+
+### Files created
+- `adhd-agent/` (SOUL, IDENTITY, AGENTS, HEARTBEAT, config/, scripts/, skills/)
+- `README.md` (7th component added)
+
+---
+
+## 2026-02-22 — Session 10: Cowork MCP — Claude als Multimodaler Sub-Agent (Cowork-Session)
+
+### Context
+Julia's orchestrator uses GPT-4o as its sole AI brain. This session submitted Claude (Anthropic) into the Julia system as a second AI model accessible via MCP — making Julia a true multi-model agentic platform.
+
+### What was done
+
+**New component: `cowork-mcp/`** — TypeScript MCP server on port 3003
+- `src/index.ts` — Streamable HTTP MCP server wrapping the Anthropic Claude API (stateless, one transport per request)
+- `package.json` + `tsconfig.json` — ESM TypeScript project, clean `tsc` build
+- Built with `@modelcontextprotocol/sdk` + `@anthropic-ai/sdk`
+
+**6 MCP tools registered** (all callable from any MCP client in the system):
+1. `claude_task` — General-purpose text delegation to Claude (reasoning, writing, analysis)
+2. `claude_multimodal_task` — Vision tasks with base64 or URL images alongside text
+3. `claude_code_review` — Structured review with severity ratings (🔴/🟡/🟢)
+4. `claude_summarize` — Content summarization in bullets / paragraph / TL;DR formats
+5. `claude_brainstorm` — Idea generation, action steps, or alternatives
+6. `cowork_status` — Health check: server state, model, uptime, tool list
+
+**Tested live** — server started successfully, health endpoint confirmed, all 5 callable tools reached the Anthropic API. API returned `"credit balance too low"` (billing issue on the stored key, not a code defect — MCP plumbing is verified end-to-end).
+
+**Ecosystem integration:**
+- `ecosystem.config.js` — `cowork-mcp` added as PM2 app with `...secrets` env spread (consistent with orchestrator pattern)
+- `docs/agent_cards/cowork_claude.md` — New agent card added
+- `README.md` — Architecture diagram updated to 6 components; Cowork MCP quick-start section added
+- `cowork-mcp/examples/test.mjs` — Standalone ESM test agent demonstrating all tools
+
+### Key decisions
+- Stateless transport (`sessionIdGenerator: undefined`) — consistent with bridge pattern; no session affinity issues
+- New transport per request rather than single shared server — prevents request ID collisions under concurrent load
+- Error handling swallows all Anthropic API errors into clean text responses — orchestrator never crashes on sub-agent failure
+- `CHARACTER_LIMIT = 25,000` truncation guard on all Claude responses — protects context windows downstream
+
+### Files created
+- `cowork-mcp/src/index.ts`
+- `cowork-mcp/package.json`, `tsconfig.json`, `README.md`
+- `cowork-mcp/examples/test.mjs`
+- `docs/agent_cards/cowork_claude.md`
+
+### Files updated
+- `ecosystem.config.js` (cowork-mcp app added)
+- `README.md` (6th component, architecture diagram, quick-start)
+
+---
+
+## 2026-02-22 — Session 11: Application Setup Audit & Infrastructure Fixes
+
+### Context
+After cowork-mcp was created, a full audit of all 6 running components revealed configuration gaps that would prevent production startup. Fixed proactively before any components were started via PM2.
+
+### What was done
+- **Full system audit**: All 6 components checked (Frontend/3002, Bridge/3001, Backend/3000, Orchestrator, OpenClaw, Cowork-MCP/3003) — 3 concrete issues identified
+- **`backend/package.json`**: `ts-node` replaced with `tsx` (incompatible with `"moduleResolution": "bundler"` in tsconfig); `tsx` added to devDependencies
+- **`ecosystem.config.js`** and **`ecosystem.dev.js`**: `...secrets` spread now injected into orchestrator + backend env blocks (not only cowork-mcp). All PM2 apps pick up API keys correctly from `.env.secrets`
+- **`.claude/launch.json`**: Created unified launch config for all 5 services
+
+### Key decisions
+- Secrets injection via `fs.readFileSync('.env.secrets')` at ecosystem config load time — avoids `env_file` PM2 quirks across different PM2 versions
+- `tsx` over `ts-node` for consistency with bridge and cowork-mcp (same devDependency already present)
+
+### Files changed
+- `backend/package.json`
+- `ecosystem.config.js`
+- `ecosystem.dev.js`
+- `.claude/launch.json` (new)

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.juliaz.adhd-agent</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/raphael/Documents/Devs/juliaz_agents/adhd-agent/scripts/adhd_loop.sh</string>
+        <string>--once</string>
+    </array>
+
+    <!-- Run every 4 hours -->
+    <key>StartInterval</key>
+    <integer>14400</integer>
+
+    <!-- Also run immediately on load -->
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/raphael/Documents/Devs/juliaz_agents/adhd-agent</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/raphael/Documents/Devs/juliaz_agents/adhd-agent/memory/adhd_loop.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/raphael/Documents/Devs/juliaz_agents/adhd-agent/memory/adhd_loop_error.log</string>
+
+    <!-- Keep alive on crash -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+        <key>HOME</key>
+        <string>/Users/raphael</string>
+    </dict>
+</dict>
+</plist>

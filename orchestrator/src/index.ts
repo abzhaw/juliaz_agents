@@ -77,7 +77,7 @@ async function processMessage(chatId: string, messageId: string, username: strin
     const { reply, usage } = await generateReply(history);
 
     // Report usage
-    reportUsage('claude-3-5-sonnet-20241022', usage.input_tokens, usage.output_tokens);
+    reportUsage('claude-haiku-4-5-20251001', usage.input_tokens, usage.output_tokens);
 
     // Store the assistant's reply in history
     addAssistantMessage(chatId, reply);
