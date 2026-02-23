@@ -67,3 +67,64 @@ model Update {
   type      String   // PROGRESS | ANNOUNCEMENT | MILESTONE
   timestamp DateTime @default(now())
 }
+
+// ── Self-Evolution Models ────────────────────────────────────────────────────
+
+// Versioned system prompts for autonomous self-improvement
+model PromptVersion {
+  id            Int       @id @default(autoincrement())
+  version       Int       @unique
+  content       String    // full system prompt text (with {{DATE}} placeholder)
+  isActive      Boolean   @default(false)
+  parentVersion Int?      // which version this was derived from
+  changeReason  String    // human-readable description of what changed
+  changeDiff    String?   // diff from parent version
+  avgScore      Float?    // rolling average score from evaluations
+  evalCount     Int       @default(0)
+  createdAt     DateTime  @default(now())
+  activatedAt   DateTime?
+  deactivatedAt DateTime?
+}
+
+// Records every tool-using interaction for evaluation
+model ToolInteraction {
+  id              Int              @id @default(autoincrement())
+  chatId          String
+  promptVersion   Int              // which prompt version was active
+  userMessage     String
+  conversationCtx String?          // JSON: last 3 turns for context
+  toolCalls       String           // JSON: [{name, args, result}]
+  finalReply      String
+  model           String           // "claude-haiku-4-5" or "gpt-4o"
+  createdAt       DateTime         @default(now())
+  evaluations     ToolEvaluation[]
+}
+
+// Individual grader scores per interaction
+model ToolEvaluation {
+  id            Int             @id @default(autoincrement())
+  interactionId Int
+  graderName    String          // tool_selection | param_correctness | result_integration | holistic_strategy
+  score         Float?          // 0.0 - 1.0 normalized
+  rawScore      String?         // original score before normalization
+  passed        Boolean
+  reasoning     String?         // from LLM graders
+  suggestion    String?         // actionable improvement suggestion
+  createdAt     DateTime        @default(now())
+  interaction   ToolInteraction @relation(fields: [interactionId], references: [id])
+}
+
+// Logs each optimizer run for auditability
+model PromptOptimizationRun {
+  id              Int      @id @default(autoincrement())
+  fromVersion     Int      // PromptVersion we optimized from
+  toVersion       Int?     // PromptVersion we generated (null if no change)
+  evaluationsUsed Int      // how many evaluations were in the batch
+  avgScoreBefore  Float
+  failingGraders  String   // JSON array of grader names with <75% pass rate
+  feedbackSummary String   // aggregated feedback sent to the optimizer
+  optimizerModel  String   // "gpt-4o-mini"
+  optimizerOutput String   // raw output from the optimizer
+  decision        String   // NEW_VERSION | NO_CHANGE | ROLLBACK
+  createdAt       DateTime @default(now())
+}

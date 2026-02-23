@@ -217,6 +217,215 @@ app.post('/updates', asyncHandler(async (req, res) => {
     res.status(201).json(update);
 }));
 
+// ── Self-Evolution: Prompt Versions ──────────────────────────────────────────
+
+app.get('/prompt-versions', asyncHandler(async (req, res) => {
+    const versions = await prisma.promptVersion.findMany({
+        orderBy: { version: 'desc' }
+    });
+    res.json(versions);
+}));
+
+app.get('/prompt-versions/active', asyncHandler(async (req, res) => {
+    const active = await prisma.promptVersion.findFirst({
+        where: { isActive: true }
+    });
+    if (!active) {
+        return res.status(404).json({ status: 'Error', message: 'No active prompt version' });
+    }
+    res.json(active);
+}));
+
+app.post('/prompt-versions', asyncHandler(async (req, res) => {
+    const { version, content, parentVersion, changeReason, changeDiff, isActive } = req.body;
+    if (!content || version === undefined || !changeReason) {
+        return res.status(400).json({ status: 'Error', message: 'version, content, and changeReason are required' });
+    }
+    // If activating this version, deactivate all others
+    if (isActive) {
+        await prisma.promptVersion.updateMany({
+            where: { isActive: true },
+            data: { isActive: false, deactivatedAt: new Date() }
+        });
+    }
+    const pv = await prisma.promptVersion.create({
+        data: {
+            version,
+            content,
+            isActive: isActive ?? false,
+            parentVersion: parentVersion ?? null,
+            changeReason,
+            changeDiff: changeDiff ?? null,
+            activatedAt: isActive ? new Date() : null
+        }
+    });
+    res.status(201).json(pv);
+}));
+
+app.patch('/prompt-versions/:id/activate', asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id);
+    // Deactivate all others
+    await prisma.promptVersion.updateMany({
+        where: { isActive: true },
+        data: { isActive: false, deactivatedAt: new Date() }
+    });
+    const pv = await prisma.promptVersion.update({
+        where: { id },
+        data: { isActive: true, activatedAt: new Date() }
+    });
+    res.json(pv);
+}));
+
+app.patch('/prompt-versions/:id', asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id);
+    const { avgScore, evalCount } = req.body;
+    const data: any = {};
+    if (avgScore !== undefined) data.avgScore = avgScore;
+    if (evalCount !== undefined) data.evalCount = evalCount;
+    const pv = await prisma.promptVersion.update({ where: { id }, data });
+    res.json(pv);
+}));
+
+// ── Self-Evolution: Tool Interactions ────────────────────────────────────────
+
+app.get('/tool-interactions', asyncHandler(async (req, res) => {
+    const since = req.query.since ? new Date(req.query.since as string) : undefined;
+    const interactions = await prisma.toolInteraction.findMany({
+        where: since ? { createdAt: { gte: since } } : undefined,
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+        include: { evaluations: true }
+    });
+    res.json(interactions);
+}));
+
+app.post('/tool-interactions', asyncHandler(async (req, res) => {
+    const { chatId, promptVersion, userMessage, conversationCtx, toolCalls, finalReply, model } = req.body;
+    if (!chatId || promptVersion === undefined || !userMessage || !toolCalls || !finalReply || !model) {
+        return res.status(400).json({ status: 'Error', message: 'chatId, promptVersion, userMessage, toolCalls, finalReply, and model are required' });
+    }
+    const interaction = await prisma.toolInteraction.create({
+        data: { chatId, promptVersion, userMessage, conversationCtx, toolCalls, finalReply, model }
+    });
+    res.status(201).json(interaction);
+}));
+
+// ── Self-Evolution: Tool Evaluations ─────────────────────────────────────────
+
+app.get('/tool-evaluations', asyncHandler(async (req, res) => {
+    const since = req.query.since ? new Date(req.query.since as string) : undefined;
+    const evaluations = await prisma.toolEvaluation.findMany({
+        where: since ? { createdAt: { gte: since } } : undefined,
+        orderBy: { createdAt: 'desc' },
+        take: 500
+    });
+    res.json(evaluations);
+}));
+
+app.post('/tool-evaluations', asyncHandler(async (req, res) => {
+    const { interactionId, graderName, score, rawScore, passed, reasoning, suggestion } = req.body;
+    if (!interactionId || !graderName || passed === undefined) {
+        return res.status(400).json({ status: 'Error', message: 'interactionId, graderName, and passed are required' });
+    }
+    const evaluation = await prisma.toolEvaluation.create({
+        data: {
+            interactionId,
+            graderName,
+            score: score ?? null,
+            rawScore: rawScore ?? null,
+            passed,
+            reasoning: reasoning ?? null,
+            suggestion: suggestion ?? null
+        }
+    });
+    res.status(201).json(evaluation);
+}));
+
+// ── Self-Evolution: Optimization Runs ────────────────────────────────────────
+
+app.get('/optimization-runs', asyncHandler(async (req, res) => {
+    const runs = await prisma.promptOptimizationRun.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 50
+    });
+    res.json(runs);
+}));
+
+app.post('/optimization-runs', asyncHandler(async (req, res) => {
+    const { fromVersion, toVersion, evaluationsUsed, avgScoreBefore, failingGraders, feedbackSummary, optimizerModel, optimizerOutput, decision } = req.body;
+    if (fromVersion === undefined || !decision || !optimizerModel || !optimizerOutput) {
+        return res.status(400).json({ status: 'Error', message: 'fromVersion, decision, optimizerModel, and optimizerOutput are required' });
+    }
+    const run = await prisma.promptOptimizationRun.create({
+        data: {
+            fromVersion,
+            toVersion: toVersion ?? null,
+            evaluationsUsed: evaluationsUsed ?? 0,
+            avgScoreBefore: avgScoreBefore ?? 0,
+            failingGraders: failingGraders ?? '[]',
+            feedbackSummary: feedbackSummary ?? '',
+            optimizerModel,
+            optimizerOutput,
+            decision
+        }
+    });
+    res.status(201).json(run);
+}));
+
+// ── Self-Evolution: Aggregate Stats ──────────────────────────────────────────
+
+app.get('/evolution-stats', asyncHandler(async (req, res) => {
+    const [versions, totalInteractions, totalEvaluations, recentRuns] = await Promise.all([
+        prisma.promptVersion.findMany({ orderBy: { version: 'asc' } }),
+        prisma.toolInteraction.count(),
+        prisma.toolEvaluation.count(),
+        prisma.promptOptimizationRun.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 10
+        })
+    ]);
+
+    // Per-grader pass rates from last 50 evaluations
+    const recentEvals = await prisma.toolEvaluation.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: 200
+    });
+    const graderStats: Record<string, { total: number; passed: number; avgScore: number }> = {};
+    for (const ev of recentEvals) {
+        if (!graderStats[ev.graderName]) {
+            graderStats[ev.graderName] = { total: 0, passed: 0, avgScore: 0 };
+        }
+        const g = graderStats[ev.graderName];
+        g.total++;
+        if (ev.passed) g.passed++;
+        if (ev.score !== null) {
+            g.avgScore = (g.avgScore * (g.total - 1) + ev.score) / g.total;
+        }
+    }
+
+    res.json({
+        promptVersions: versions.map(v => ({
+            version: v.version,
+            isActive: v.isActive,
+            avgScore: v.avgScore,
+            evalCount: v.evalCount,
+            changeReason: v.changeReason,
+            createdAt: v.createdAt,
+            activatedAt: v.activatedAt
+        })),
+        totalInteractions,
+        totalEvaluations,
+        graderStats,
+        recentOptimizationRuns: recentRuns.map(r => ({
+            fromVersion: r.fromVersion,
+            toVersion: r.toVersion,
+            decision: r.decision,
+            avgScoreBefore: r.avgScoreBefore,
+            createdAt: r.createdAt
+        }))
+    });
+}));
+
 // ── Root ──────────────────────────────────────────────────────────────────────
 
 app.get('/', (req, res) => {
