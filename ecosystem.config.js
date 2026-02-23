@@ -51,8 +51,19 @@ module.exports = {
                 ...secrets
             }
         },
-        // backend is managed by Docker (docker compose up -d in ./backend)
-        // Do NOT add it here — it would conflict with the Docker container on port 3000
+        // backend managed by Docker via PM2 — runs in foreground so PM2 can track it
+        {
+            name: 'backend-docker',
+            cwd: './backend',
+            script: '/usr/local/bin/docker',
+            args: 'compose up',
+            restart_delay: 10000,
+            exp_backoff_restart_delay: 100,
+            max_restarts: 5,
+            env: {
+                PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+            }
+        },
         {
             // Cowork MCP Server — Claude as a multimodal sub-agent (port 3003)
             // Exposes claude_task, claude_multimodal_task, claude_code_review,

@@ -116,7 +116,7 @@ export function ChatWindow({
         <div className="flex items-center gap-2 min-w-0">
           <Sparkles className="w-4 h-4 text-blue-400 flex-shrink-0" />
           <h3 className="font-semibold text-sm md:text-base truncate">
-            JuliaFrontEnd
+            Julia
           </h3>
         </div>
 
@@ -128,13 +128,12 @@ export function ChatWindow({
           >
             <div className="w-12 md:w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
               <div
-                className={`h-full rounded-full transition-all duration-500 ${
-                  ctxPercent > 80
+                className={`h-full rounded-full transition-all duration-500 ${ctxPercent > 80
                     ? "bg-red-500"
                     : ctxPercent > 50
                       ? "bg-yellow-500"
                       : "bg-blue-500"
-                }`}
+                  }`}
                 style={{ width: `${Math.max(ctxPercent, 1)}%` }}
               />
             </div>
@@ -172,11 +171,10 @@ export function ChatWindow({
                     <button
                       key={id}
                       onClick={() => handleModelChange(id)}
-                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-white/10 transition-colors ${
-                        id === selectedModel
+                      className={`block w-full text-left px-3 py-2 text-xs hover:bg-white/10 transition-colors ${id === selectedModel
                           ? "text-blue-400"
                           : "text-muted-foreground"
-                      }`}
+                        }`}
                     >
                       {label}
                     </button>
@@ -206,7 +204,7 @@ export function ChatWindow({
         <AnimatePresence initial={false}>
           {messages.length === 0 ? (
             <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
-              Ask JuliaFrontEnd anything...
+              Ask Julia anything...
             </div>
           ) : (
             messages.map((msg) => (
@@ -218,11 +216,10 @@ export function ChatWindow({
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] text-sm ${
-                    msg.role === "user"
+                  className={`max-w-[85%] text-sm ${msg.role === "user"
                       ? "bg-blue-600/20 border border-blue-500/20 p-3 rounded-2xl rounded-tr-none"
                       : "bg-white/5 border border-white/5 p-3 rounded-2xl rounded-tl-none"
-                  }`}
+                    }`}
                 >
                   {msg.parts.map((part, i) => {
                     // Text parts — render markdown for assistant, plain text for user
@@ -282,13 +279,12 @@ export function ChatWindow({
 
                   {/* Role label */}
                   <div
-                    className={`text-[10px] mt-2 uppercase ${
-                      msg.role === "user"
+                    className={`text-[10px] mt-2 uppercase ${msg.role === "user"
                         ? "text-blue-400/60"
                         : "text-muted-foreground"
-                    }`}
+                      }`}
                   >
-                    {msg.role === "user" ? "You" : "JuliaFrontEnd"}
+                    {msg.role === "user" ? "You" : "Julia"}
                   </div>
                 </div>
               </motion.div>
@@ -305,7 +301,7 @@ export function ChatWindow({
           >
             <div className="text-[10px] text-blue-400/40 animate-pulse uppercase tracking-widest pl-2 flex items-center gap-1.5">
               <Loader2 className="w-3 h-3 animate-spin" />
-              JuliaFrontEnd is thinking...
+              Julia is thinking...
             </div>
           </motion.div>
         )}
@@ -338,7 +334,7 @@ export function ChatWindow({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask JuliaFrontEnd anything..."
+            placeholder="Ask Julia anything..."
             disabled={isLoading}
             className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-12 text-base md:text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all disabled:opacity-50"
           />

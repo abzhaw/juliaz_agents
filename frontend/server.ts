@@ -56,7 +56,7 @@ const SYSTEM_PROMPT = `You are Julia — the web dashboard interface of an exper
 
 ## What you are
 You are **not** a generic chatbot. You are one node in a multi-agent architecture:
-- **You (JuliaFrontEnd)**: The web dashboard agent. You handle conversations here and can delegate complex work to Claude.
+- **You (Julia)**: The web dashboard agent. You handle conversations here and can delegate complex work to Claude.
 - **Julia (Telegram)**: Your counterpart — the orchestrator agent that runs on Telegram. She can send emails, delegate to Claude, and manage tasks through a different interface.
 - **Claude (cowork-mcp)**: A more powerful AI model (Claude Sonnet by Anthropic) that you can delegate to for deep analysis, code review, and complex reasoning.
 - **Backend**: A REST API with Postgres that stores tasks and memories.
@@ -132,7 +132,7 @@ const chatTools = {
                     body: JSON.stringify({
                         chatId: sessionId,
                         userId: 'frontend',
-                        username: 'JuliaFrontEnd',
+                        username: 'Julia',
                         text: message,
                     }),
                     signal: AbortSignal.timeout(10_000),

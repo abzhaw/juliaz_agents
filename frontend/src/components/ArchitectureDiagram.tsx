@@ -1,5 +1,5 @@
-import React from "react";
-import { motion } from "framer-motion";
+import React, { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import ReactFlow, {
     Background,
     Controls,
@@ -17,6 +17,7 @@ import ReactFlow, {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { User, MessageSquare, Link as LinkIcon, Cpu, Database, Brain, Zap, LucideIcon } from "lucide-react";
+import architectureDocs from "../lib/architectureData.json";
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -25,35 +26,60 @@ interface NodeData {
     title?: string;
     icon?: LucideIcon | React.ElementType;
     active?: boolean;
+    description?: string;
 }
 
 // ── Custom Node Components ──────────────────────────────────────────────────
 
-const SystemNode = ({ data }: NodeProps) => {
+const SystemNode = ({ data }: NodeProps<NodeData>) => {
     const Icon = data.icon;
-    return (
-        <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(59, 130, 246, 0.3)" }}
-            className={`p-4 rounded-2xl border backdrop-blur-xl transition-all relative group ${data.active ? 'bg-blue-500/10 border-blue-500/50 shadow-blue-500/10' : 'bg-white/5 border-white/10 opacity-80'}`}
-        >
-            {data.active && (
-                <div className="absolute -inset-[1px] bg-gradient-to-r from-blue-500/40 to-cyan-500/40 rounded-2xl blur-sm opacity-50 group-hover:opacity-100 transition-opacity" />
-            )}
+    const [isHovered, setIsHovered] = useState(false);
 
-            <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-black" />
-            <div className="flex items-center gap-3 relative z-10">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-inner ${data.active ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/10 text-muted-foreground'}`}>
-                    <Icon className="w-6 h-6" />
+    return (
+        <div
+            className="relative"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+        >
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(59, 130, 246, 0.3)" }}
+                className={`p-4 rounded-2xl border backdrop-blur-xl transition-all relative group z-20 ${data.active ? 'bg-blue-500/10 border-blue-500/50 shadow-blue-500/10' : 'bg-white/5 border-white/10 opacity-80'}`}
+            >
+                {data.active && (
+                    <div className="absolute -inset-[1px] bg-gradient-to-r from-blue-500/40 to-cyan-500/40 rounded-2xl blur-sm opacity-50 group-hover:opacity-100 transition-opacity" />
+                )}
+
+                <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-black" />
+                <div className="flex items-center gap-3 relative z-10">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center border shadow-inner ${data.active ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' : 'bg-white/5 border-white/10 text-muted-foreground'}`}>
+                        {Icon && <Icon className="w-6 h-6" />}
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-blue-400/70 uppercase tracking-widest font-bold mb-0.5">{data.label}</p>
+                        <p className="text-sm font-bold text-white/90">{data.title}</p>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-[10px] text-blue-400/70 uppercase tracking-widest font-bold mb-0.5">{data.label}</p>
-                    <p className="text-sm font-bold text-white/90">{data.title}</p>
-                </div>
-            </div>
-            <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-black" />
-        </motion.div>
+                <Handle type="source" position={Position.Right} className="!w-3 !h-3 !bg-blue-500 !border-2 !border-black" />
+            </motion.div>
+
+            <AnimatePresence>
+                {isHovered && data.description && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute left-0 top-full mt-3 w-64 p-4 bg-[#0a0a0a] border border-white/20 rounded-xl shadow-[0_10px_40px_rgba(0,0,0,0.8)] z-[100] pointer-events-none"
+                    >
+                        <p className="text-xs text-white/80 leading-relaxed font-medium">
+                            {data.description}
+                        </p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
     );
 };
 
@@ -87,37 +113,37 @@ const initialNodes: Node<NodeData>[] = [
         id: "user",
         type: "system",
         position: { x: 0, y: 300 },
-        data: { label: "User Interface", title: "Human Input", icon: User, active: true }
+        data: { label: "User Interface", title: "Human Input", icon: User, active: true, description: architectureDocs.user?.description }
     },
     {
         id: "openclaw",
         type: "system",
         position: { x: 400, y: 300 },
-        data: { label: "Messaging Gateway", title: "OpenClawJulia", icon: MessageSquare, active: true }
+        data: { label: "Messaging Gateway", title: "OpenClawJulia", icon: MessageSquare, active: true, description: architectureDocs.openclaw?.description }
     },
     {
         id: "bridge",
         type: "system",
         position: { x: 800, y: 300 },
-        data: { label: "The Glue", title: "MCP Bridge (Sync)", icon: LinkIcon, active: true }
+        data: { label: "The Glue", title: "MCP Bridge (Sync)", icon: LinkIcon, active: true, description: architectureDocs.bridge?.description }
     },
     {
         id: "orchestrator",
         type: "system",
         position: { x: 1200, y: 300 },
-        data: { label: "Intelligence", title: "Julia Orchestrator", icon: Cpu, active: true }
+        data: { label: "Intelligence", title: "Julia Orchestrator", icon: Cpu, active: true, description: architectureDocs.orchestrator?.description }
     },
     {
         id: "backend",
         type: "system",
         position: { x: 1650, y: 150 },
-        data: { label: "Application Layer", title: "REST API (Docker)", icon: Zap, active: true }
+        data: { label: "Application Layer", title: "REST API (Docker)", icon: Zap, active: true, description: architectureDocs.backend?.description }
     },
     {
         id: "database",
         type: "system",
         position: { x: 1650, y: 450 },
-        data: { label: "Persistence", title: "PostgreSQL / Memory", icon: Database, active: true }
+        data: { label: "Persistence", title: "PostgreSQL / Memory", icon: Database, active: true, description: architectureDocs.database?.description }
     },
 
     // OpenClaw Skills
@@ -135,25 +161,25 @@ const initialNodes: Node<NodeData>[] = [
 
 const initialEdges = [
     // Flow Path
-    { id: "e1-2", source: "user", target: "openclaw", animated: true, style: { strokeWidth: 2, stroke: "#3b82f6" } },
-    { id: "e2-3", source: "openclaw", target: "bridge", animated: true, style: { strokeWidth: 2, stroke: "#3b82f6" } },
-    { id: "e3-4", source: "bridge", target: "orchestrator", animated: true, style: { strokeWidth: 2, stroke: "#3b82f6" } },
+    { id: "e1-2", source: "user", target: "openclaw", type: "smoothstep", animated: true, style: { strokeWidth: 2, stroke: "#3b82f6" } },
+    { id: "e2-3", source: "openclaw", target: "bridge", type: "smoothstep", animated: true, style: { strokeWidth: 2, stroke: "#3b82f6" } },
+    { id: "e3-4", source: "bridge", target: "orchestrator", type: "smoothstep", animated: true, style: { strokeWidth: 2, stroke: "#3b82f6" } },
 
     // Interactions
-    { id: "e4-5", source: "orchestrator", target: "backend", label: "REST", style: { stroke: "#6366f1" } },
-    { id: "e4-6", source: "orchestrator", target: "database", label: "Prisma", style: { stroke: "#6366f1" } },
+    { id: "e4-5", source: "orchestrator", target: "backend", type: "smoothstep", label: "REST", style: { stroke: "#6366f1" } },
+    { id: "e4-6", source: "orchestrator", target: "database", type: "smoothstep", label: "Prisma", style: { stroke: "#6366f1" } },
 
     // OpenClaw Skill Connections
-    { id: "ocs1", source: "openclaw", target: "oc-skill-1", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
-    { id: "ocs2", source: "openclaw", target: "oc-skill-2", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
-    { id: "ocs3", source: "openclaw", target: "oc-skill-3", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
-    { id: "ocs4", source: "openclaw", target: "oc-skill-4", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
+    { id: "ocs1", source: "openclaw", target: "oc-skill-1", type: "smoothstep", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
+    { id: "ocs2", source: "openclaw", target: "oc-skill-2", type: "smoothstep", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
+    { id: "ocs3", source: "openclaw", target: "oc-skill-3", type: "smoothstep", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
+    { id: "ocs4", source: "openclaw", target: "oc-skill-4", type: "smoothstep", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
 
     // Orchestrator Skill Connections
-    { id: "es1", source: "orchestrator", target: "skill-1", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
-    { id: "es2", source: "orchestrator", target: "skill-2", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
-    { id: "es3", source: "orchestrator", target: "skill-3", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
-    { id: "es4", source: "orchestrator", target: "skill-4", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
+    { id: "es1", source: "orchestrator", target: "skill-1", type: "smoothstep", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
+    { id: "es2", source: "orchestrator", target: "skill-2", type: "smoothstep", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
+    { id: "es3", source: "orchestrator", target: "skill-3", type: "smoothstep", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
+    { id: "es4", source: "orchestrator", target: "skill-4", type: "smoothstep", style: { stroke: "#a855f7", strokeDasharray: "5 5", opacity: 0.4 } },
 ];
 
 export function ArchitectureDiagram() {

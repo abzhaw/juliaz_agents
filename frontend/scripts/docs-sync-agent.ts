@@ -30,7 +30,7 @@ function parseDocumentation() {
         for (const section of sections) {
             if (section.startsWith('🧠 Orchestrator')) {
                 architectureData.orchestrator.description = extractFirstParagraph(section);
-            } else if (section.includes('OpenClaw')) { // 📡 OpenClawJulia
+            } else if (section.startsWith('📡 OpenClaw')) {
                 architectureData.openclaw.description = extractFirstParagraph(section);
             } else if (section.startsWith('🔌 Bridge')) {
                 architectureData.bridge.description = extractFirstParagraph(section);
