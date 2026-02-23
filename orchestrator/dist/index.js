@@ -93,6 +93,51 @@ async function processMessage(chatId, messageId, username, text) {
         }
         return;
     }
+    // ── /tasks — shortcut commands for task management ─────────────
+    const trimmedLower = text.trim().toLowerCase();
+    if (trimmedLower === '/tasks') {
+        // Fast path: list tasks without going through LLM
+        const { executeTool } = await import('./tools.js');
+        const result = await executeTool('manage_tasks', JSON.stringify({ action: 'list' }));
+        await postReply(chatId, result);
+        return;
+    }
+    if (trimmedLower === '/tasks next') {
+        const { executeTool } = await import('./tools.js');
+        const result = await executeTool('manage_tasks', JSON.stringify({ action: 'next' }));
+        await postReply(chatId, result);
+        return;
+    }
+    if (trimmedLower.startsWith('/tasks done ')) {
+        const taskId = text.trim().split(/\s+/)[2]?.toUpperCase();
+        if (taskId) {
+            const { executeTool } = await import('./tools.js');
+            const result = await executeTool('manage_tasks', JSON.stringify({ action: 'update', task_id: taskId, status: 'done', note: 'Marked done via Telegram.' }));
+            await postReply(chatId, result);
+        }
+        else {
+            await postReply(chatId, '⚠️ Usage: /tasks done TASK-001');
+        }
+        return;
+    }
+    if (trimmedLower.startsWith('/tasks add ')) {
+        const title = text.trim().slice('/tasks add '.length).trim();
+        if (title) {
+            const { executeTool } = await import('./tools.js');
+            const result = await executeTool('manage_tasks', JSON.stringify({ action: 'create', title }));
+            await postReply(chatId, result);
+        }
+        else {
+            await postReply(chatId, '⚠️ Usage: /tasks add My new task title');
+        }
+        return;
+    }
+    if (trimmedLower.startsWith('/tasks status')) {
+        const { executeTool } = await import('./tools.js');
+        const result = await executeTool('manage_tasks', JSON.stringify({ action: 'list' }));
+        await postReply(chatId, result);
+        return;
+    }
     // Add the user message to history
     addUserMessage(chatId, text);
     // Silently check if this message contains something worth preserving as a memory

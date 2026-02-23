@@ -2,7 +2,7 @@
 
 > **Who this is for**: Anyone who wants to understand this project without needing to be a software developer.
 > **Maintained by**: The Docs Agent — updated whenever the system changes.
-> **Last updated**: 2026-02-22 (Update 3)
+> **Last updated**: 2026-02-23 (Update 4 — Sentinel wired into PM2 + boot)
 
 ---
 
@@ -195,6 +195,39 @@ The frontend (`./frontend/`, port 3002) is a Next.js 15 web application serving 
 
 ---
 
+## The Ambient Agents
+
+In addition to the core components above, Julia has four **ambient agents** — autonomous background processes that keep the system healthy, secure, and organized without manual intervention.
+
+### 🔐 Sentinel — The Security Scanner
+
+Sentinel (`security-agent/`) is Julia's immune system. It runs every morning at 07:00 and once at boot, scanning the entire system for security issues: open ports, leaked credentials, npm vulnerabilities, Docker misconfigurations, suspicious network connections, and more.
+
+It produces a daily Markdown report and sends a Telegram summary to Raphael. Sentinel is self-learning — it tracks what changed between scans, suppresses known-accepted findings, and improves its heuristics over time.
+
+**Schedule**: PM2 cron daily at 07:00 + boot scan via `start-system.sh`
+**10 scanning skills**: port scan, network audit, credential audit, dependency audit, process audit, log analysis, Docker security, API security, OpenClaw security, self-learning
+
+### ⚙️ Health Checker — The Watchdog
+
+The Health Checker (`health-checker/`) runs every 15 minutes and verifies that every service, ambient agent, and scheduled process is alive. If a PM2 process is simply stopped, it auto-restarts it. If something is errored or down, it alerts Raphael via Telegram.
+
+**Schedule**: PM2 cron every 15 minutes
+
+### 📋 Task Manager — The Project Keeper
+
+The Task Manager (`task-manager/`) monitors the shared TODO queue (`todo/`) for integrity issues: stale tasks, circular dependencies, tasks blocked by resolved dependencies. It produces weekly summaries on Mondays.
+
+**Schedule**: PM2 cron every 6 hours
+
+### 🧹 ADHD Agent — The Hygiene Scanner
+
+The ADHD Agent (`adhd-agent/`) scans for structural drift: duplicate skills, orphaned agents, dead files, overlapping triggers. It proposes fixes via Telegram and waits for approval before acting.
+
+**Schedule**: macOS LaunchAgent every 4 hours
+
+---
+
 ## The Agents
 
 Julia's system includes multiple cooperating agents, each with a distinct role:
@@ -206,9 +239,12 @@ Julia's system includes multiple cooperating agents, each with a distinct role:
 | **OpenClawJulia** | Communication gateway — Telegram routing | ✅ Active |
 | **Cowork Claude** | Claude sub-agent — complex reasoning via MCP | ✅ Active |
 | **Docs Agent** | System documentation — keeps docs/ updated | ✅ Active |
-| **ADHD Agent** | System hygiene — scans for structural drift | 🟡 Designed |
-| **Thesis Agent (Schreiber)** | Research/writing — master's thesis support | 🟡 Being built |
-| **Julia Medium** | Ambient researcher — article drafting | 🟡 Designed |
+| **ADHD Agent** | System hygiene — scans for structural drift | ✅ Autonomous (LaunchAgent, 4h) |
+| **Sentinel (Security)** | Daily security scanning + self-learning | ✅ Autonomous (PM2 cron, 07:00) |
+| **Task Manager** | Project management — TODO queue integrity | ✅ Autonomous (PM2 cron, 6h) |
+| **Health Checker** | System watchdog — monitors all services | ✅ Autonomous (PM2 cron, 15min) |
+| **Thesis Agent (Schreiber)** | Research/writing — master's thesis support | 🟡 Manual (on-demand) |
+| **Julia Medium** | Ambient researcher — article drafting | 🟡 Manual (on-demand) |
 | **Wish Companion** | Special mode — end-of-life wish fulfillment | ✅ Embedded in Julia |
 
 For the full skill and tool inventory, see:
@@ -262,4 +298,4 @@ For the full skill and tool inventory, see:
 
 ---
 
-*This document is maintained by the Docs Agent and updated when the system changes. Last updated: 2026-02-22 (Update 3).*
+*This document is maintained by the Docs Agent and updated when the system changes. Last updated: 2026-02-23 (Update 4).*

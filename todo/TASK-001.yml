@@ -1,0 +1,68 @@
+id: TASK-001
+title: "Implement credential security: scoped 1Password + Telegram approval flow"
+status: open
+priority: high
+created: 2026-02-23
+updated: 2026-02-23
+created_by: raphael
+assigned_to: system
+tags: [security, infra, 1password, telegram]
+depends_on: []
+due: null
+
+description: |
+  Replace broad 1Password CLI access (op:*) with a scoped service account + startup
+  injection + Telegram-based approval flow. The system should never have runtime access
+  to op. Raphael approves sensitive actions from his phone via Telegram.
+
+plan: |
+  Full plan: docs/credential-security-plan.md
+
+  ## Summary of 5 Parts:
+
+  ### Part 1 — Scoped 1Password Service Account
+  - Create 1Password vault "juliaz-agents" with only needed credentials
+  - Create service account "juliaz-agents-bot" scoped to that vault (read-only)
+  - Store OP_SERVICE_ACCOUNT_TOKEN as env var
+
+  ### Part 2 — Startup Credential Injection
+  - New script: scripts/inject-credentials.sh
+  - Runs at boot, pulls secrets from 1Password, writes .env.runtime
+  - Update ecosystem.config.js to read .env.runtime instead of .env.secrets
+  - Update start-system.sh to call injection script first
+  - Update email tools to use env vars instead of op run
+
+  ### Part 3 — Telegram Approval Flow
+  - New tool: request_approval(action, reason, urgency)
+  - Sends approval request to Raphael via Telegram
+  - Waits for /approve_ID or /deny_ID reply
+  - Add /approve and /deny command handling to orchestrator processMessage()
+  - Configurable timeout (default 10 min)
+
+  ### Part 4 — Lock Down Permissions
+  - Remove Bash(op:*) from .claude/settings.local.json
+  - Delete .env.secrets after verifying new flow
+  - Add .env.runtime to .gitignore
+
+  ### Part 5 — Pattern for Future App Access
+  - Scoped API keys for new services (Gmail, Notion, etc.)
+  - Separate Chrome profile for OpenClaw browser automation
+  - All new credentials go through the same scoped vault + injection pattern
+
+  ## Implementation Order:
+  1. Create 1Password service account + vault (manual, ~15 min)
+  2. Write inject-credentials.sh and test standalone
+  3. Update email tools to use env vars instead of op run
+  4. Update ecosystem.config.js to read .env.runtime
+  5. Update start-system.sh to call injection script first
+  6. Add request_approval tool to orchestrator
+  7. Add /approve and /deny handling to message processor
+  8. Test full flow via Telegram
+  9. Remove Bash(op:*) from permissions and delete .env.secrets
+  10. Update Julia's system prompt to mention approval tool
+
+notes: |
+  [2026-02-23] Task created from security audit session in Cowork.
+  Full analysis of current system showed op:* permission is too broad.
+  OpenClaw Chrome extension CDP access to attached tabs is also a concern
+  but is a separate issue (don't attach to sensitive tabs).

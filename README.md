@@ -95,17 +95,20 @@ and the AI assistant doing the building (Antigravity).
 
 ---
 
-## The 7 Components
+## The 10 Components
 
 | Component | What it is | Where it runs |
 |---|---|---|
 | **Frontend (`frontend/`)** | Next-Gen Next.js 15 Dashboard | MacBook — port 3002 |
 | **Bridge (`bridge/`)** | MCP glue server connecting Agents ↔ UI | MacBook — port 3001 |
 | **Backend (`backend/`)** | REST API with Postgres persistence | Docker Compose — port 3000 |
-| **Orchestrator** | Julia's primary "brain" (Loop + AI) | MacBook — independent process |
-| **OpenClaw** | Communication gateway (Telegram, etc.) | MacBook — local CLI |
+| **Orchestrator** | Julia's primary "brain" (Loop + AI) | MacBook — PM2 always-on |
+| **OpenClaw** | Communication gateway (Telegram, etc.) | MacBook — LaunchAgent |
 | **Cowork MCP (`cowork-mcp/`)** | Claude as a multimodal sub-agent | MacBook — port 3003 |
-| **ADHD Agent (`adhd-agent/`)** | System hygiene — scans for structural drift | Ambient (not yet automated) |
+| **ADHD Agent (`adhd-agent/`)** | System hygiene — scans for structural drift | MacBook — LaunchAgent (4h) |
+| **Sentinel (`security-agent/`)** | Daily security scanner + self-learning | MacBook — PM2 cron (07:00) |
+| **Task Manager (`task-manager/`)** | TODO queue integrity + weekly summaries | MacBook — PM2 cron (6h) |
+| **Health Checker (`health-checker/`)** | System watchdog — monitors + auto-heals | MacBook — PM2 cron (15min) |
 
 ---
 
@@ -231,15 +234,45 @@ juliaz_agents/
 │   ├── skills/julia-relay/            ← Forwards messages to bridge
 │   └── skills/openclaw-self-manage/   ← Health check + restart
 │
-├── adhd-agent/                        ← System hygiene agent
-│   └── SOUL.md                        ← Core identity and rules
+├── adhd-agent/                        ← System hygiene agent (LaunchAgent, 4h)
+│   ├── SOUL.md                        ← Core identity and rules
+│   ├── HEARTBEAT.md                   ← Schedule and triggers
+│   ├── config/                        ← LaunchAgent plist + settings
+│   └── scripts/                       ← adhd_loop.sh, scan_skills.py
 │
-├── julia_medium_agent/                ← Research/article agent
-│   └── SOUL.md                        ← Personality and boundaries
+├── security-agent/                    ← Sentinel security scanner (PM2 cron, 07:00)
+│   ├── SOUL.md                        ← Core identity
+│   ├── HEARTBEAT.md                   ← Schedule and escalation rules
+│   ├── scripts/daily-report.sh        ← Main scanner script
+│   ├── skills/                        ← 10 security scanning skills
+│   └── memory/                        ← Baseline, learnings, suppressed
+│
+├── task-manager/                      ← TODO queue manager (PM2 cron, 6h)
+│   ├── SOUL.md                        ← Core identity
+│   ├── HEARTBEAT.md                   ← Schedule and checks
+│   └── scripts/task_check.sh          ← Queue integrity + stale detection
+│
+├── health-checker/                    ← System watchdog (PM2 cron, 15min)
+│   ├── SOUL.md                        ← Core identity
+│   ├── HEARTBEAT.md                   ← Check targets and schedule
+│   └── scripts/health_check.sh        ← Port checks, PM2 status, auto-heal
+│
+├── openclaw/                          ← Telegram gateway (LaunchAgent)
+│   ├── SOUL.md                        ← Personality and values
+│   ├── skills/julia-relay/            ← Forwards messages to bridge
+│   └── skills/openclaw-self-manage/   ← Health check + restart
+│
+├── thesis-agent/                      ← Thesis writing agent (manual)
+│   ├── SOUL.md                        ← Academic German persona
+│   └── skills/                        ← 10 thesis skills
 │
 ├── docs/                              ← Documentation
 │   ├── agent_system_overview.md       ← Full non-technical guide
 │   └── agent_cards/                   ← One-page card per agent
+│
+├── todo/                              ← Shared task queue (YAML files)
+│   ├── index.yml                      ← Task index
+│   └── TASK-NNN.yml                   ← Individual tasks
 │
 └── thesis/                            ← Master's thesis workspace
     ├── research_papers/               ← Source PDFs

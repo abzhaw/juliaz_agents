@@ -8,7 +8,7 @@
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/raphael/Documents/Devs/juliaz_agents/adhd-agent/scripts/adhd_loop.sh</string>
+        <string>/Users/raphael/juliaz_agents/adhd-agent/scripts/adhd_loop.sh</string>
         <string>--once</string>
     </array>
 
@@ -18,16 +18,16 @@
 
     <!-- Also run immediately on load -->
     <key>RunAtLoad</key>
-    <false/>
+    <true/>
 
     <key>WorkingDirectory</key>
-    <string>/Users/raphael/Documents/Devs/juliaz_agents/adhd-agent</string>
+    <string>/Users/raphael/juliaz_agents/adhd-agent</string>
 
     <key>StandardOutPath</key>
-    <string>/Users/raphael/Documents/Devs/juliaz_agents/adhd-agent/memory/adhd_loop.log</string>
+    <string>/Users/raphael/juliaz_agents/adhd-agent/memory/adhd_loop.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/raphael/Documents/Devs/juliaz_agents/adhd-agent/memory/adhd_loop_error.log</string>
+    <string>/Users/raphael/juliaz_agents/adhd-agent/memory/adhd_loop_error.log</string>
 
     <!-- Keep alive on crash -->
     <key>KeepAlive</key>

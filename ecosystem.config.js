@@ -80,6 +80,51 @@ module.exports = {
                 COWORK_MCP_PORT: '3003',
                 ...secrets
             }
+        },
+        // Sentinel — Daily security scanner (runs at 07:00 every morning)
+        // Produces reports in security-agent/reports/ and sends Telegram summary
+        {
+            name: 'sentinel',
+            cwd: './security-agent',
+            script: './scripts/daily-report.sh',
+            interpreter: '/bin/bash',
+            autorestart: false,       // one-shot script, don't restart after exit
+            cron_restart: '0 7 * * *', // re-run every day at 07:00
+            watch: false,
+            env: {
+                PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+                ...secrets
+            }
+        },
+        // Task Manager — Checks task queue integrity every 6 hours
+        // Detects stale tasks, auto-unblocks resolved dependencies, weekly summary on Mondays
+        {
+            name: 'task-manager',
+            cwd: './task-manager',
+            script: './scripts/task_check.sh',
+            interpreter: '/bin/bash',
+            autorestart: false,
+            cron_restart: '0 */6 * * *', // every 6 hours
+            watch: false,
+            env: {
+                PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+                ...secrets
+            }
+        },
+        // Health Checker — Monitors all services every 15 minutes
+        // Auto-restarts stopped PM2 processes, alerts on failures, silent when healthy
+        {
+            name: 'health-checker',
+            cwd: './health-checker',
+            script: './scripts/health_check.sh',
+            interpreter: '/bin/bash',
+            autorestart: false,
+            cron_restart: '*/15 * * * *', // every 15 minutes
+            watch: false,
+            env: {
+                PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+                ...secrets
+            }
         }
     ]
 };

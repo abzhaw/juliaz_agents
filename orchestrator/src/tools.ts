@@ -9,8 +9,14 @@
 
 import { spawnSync } from 'child_process';
 import { join } from 'path';
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'fs';
 import type { Tool } from '@anthropic-ai/sdk/resources/messages.js';
 import type { ChatCompletionTool } from 'openai/resources/chat/completions.js';
+
+// ─── Task Manager Paths ─────────────────────────────────────────────────────
+
+const PROJECT_DIR = process.env.PROJECT_DIR ?? '/Users/raphael/Documents/Devs/juliaz_agents';
+const TODO_DIR = join(PROJECT_DIR, 'todo');
 
 // ─── Paths ────────────────────────────────────────────────────────────────────
 
@@ -133,6 +139,63 @@ export const TOOLS: Tool[] = [
             required: [],
         },
     },
+    {
+        name: 'manage_tasks',
+        description: [
+            'Manage the shared TODO task queue for juliaz_agents.',
+            'Actions: "list" (show open tasks), "get" (read a specific task),',
+            '"create" (add a new task), "update" (change status/priority/notes),',
+            '"next" (suggest highest-priority task to work on).',
+            'Use when Raphael asks about tasks, says /tasks, asks "what should I work on",',
+            '"create a task for X", "mark TASK-001 done", "what\'s open", or anything task-related.',
+        ].join(' '),
+        input_schema: {
+            type: 'object' as const,
+            properties: {
+                action: {
+                    type: 'string',
+                    enum: ['list', 'get', 'create', 'update', 'next'],
+                    description: 'The action to perform on the task queue.',
+                },
+                task_id: {
+                    type: 'string',
+                    description: 'Task ID (e.g., "TASK-001"). Required for "get" and "update".',
+                },
+                title: {
+                    type: 'string',
+                    description: 'Task title. Required for "create".',
+                },
+                description: {
+                    type: 'string',
+                    description: 'Task description. Used with "create".',
+                },
+                status: {
+                    type: 'string',
+                    enum: ['open', 'in_progress', 'blocked', 'done', 'cancelled'],
+                    description: 'New status. Used with "update".',
+                },
+                priority: {
+                    type: 'string',
+                    enum: ['critical', 'high', 'medium', 'low'],
+                    description: 'Priority level. Used with "create" or "update".',
+                },
+                tags: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Tags for the task. Used with "create".',
+                },
+                note: {
+                    type: 'string',
+                    description: 'Note to append. Used with "update".',
+                },
+                assigned_to: {
+                    type: 'string',
+                    description: 'Who the task is assigned to. Used with "create" or "update".',
+                },
+            },
+            required: ['action'],
+        },
+    },
 ];
 
 // ─── OpenAI Tool Definitions (for GPT-4o fallback) ───────────────────────────
@@ -171,6 +234,18 @@ interface FetchEmailArgs {
     search?: string;
 }
 
+interface ManageTasksArgs {
+    action: 'list' | 'get' | 'create' | 'update' | 'next';
+    task_id?: string;
+    title?: string;
+    description?: string;
+    status?: string;
+    priority?: string;
+    tags?: string[];
+    note?: string;
+    assigned_to?: string;
+}
+
 // ─── Executor ─────────────────────────────────────────────────────────────────
 
 /**
@@ -189,6 +264,8 @@ export async function executeTool(name: string, rawArgs: string): Promise<string
                 return await sendTelegramMessage(args as SendTelegramArgs);
             case 'fetch_email':
                 return await fetchEmail(args as FetchEmailArgs);
+            case 'manage_tasks':
+                return manageTasks(args as ManageTasksArgs);
             default:
                 return `Error: unknown tool "${name}"`;
         }
@@ -319,4 +396,275 @@ async function fetchEmail({ limit = 5, unread, search }: FetchEmailArgs): Promis
 
     console.log(`[tools] fetch_email → got ${output.split('\n').length} lines`);
     return output;
+}
+
+// ─── Task Manager Implementation ─────────────────────────────────────────────
+
+function readYamlSimple(filepath: string): Record<string, any> {
+    // Simple YAML parser for our task format — handles key: value, arrays, multiline |
+    const content = readFileSync(filepath, 'utf8');
+    const result: Record<string, any> = {};
+    let currentKey = '';
+    let multilineMode = false;
+    let multilineValue = '';
+
+    for (const line of content.split('\n')) {
+        if (multilineMode) {
+            if (line.startsWith('  ') || line.trim() === '') {
+                multilineValue += (multilineValue ? '\n' : '') + line.replace(/^  /, '');
+                continue;
+            } else {
+                result[currentKey] = multilineValue.trim();
+                multilineMode = false;
+            }
+        }
+
+        const match = line.match(/^(\w[\w_]*)\s*:\s*(.*)/);
+        if (match) {
+            const [, key, value] = match;
+            currentKey = key;
+            const trimmed = value.trim();
+
+            if (trimmed === '|') {
+                multilineMode = true;
+                multilineValue = '';
+            } else if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                // Inline array: [tag1, tag2]
+                result[key] = trimmed.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+            } else if (trimmed === 'null' || trimmed === '') {
+                result[key] = null;
+            } else {
+                result[key] = trimmed.replace(/^["']|["']$/g, '');
+            }
+        }
+    }
+
+    if (multilineMode) {
+        result[currentKey] = multilineValue.trim();
+    }
+
+    return result;
+}
+
+function writeTaskYaml(filepath: string, task: Record<string, any>): void {
+    const lines: string[] = [];
+    const fields = ['id', 'title', 'status', 'priority', 'created', 'updated',
+                     'created_by', 'assigned_to', 'tags', 'depends_on', 'due',
+                     'description', 'plan', 'notes'];
+
+    for (const key of fields) {
+        const val = task[key];
+        if (val === undefined) continue;
+
+        if (val === null) {
+            lines.push(`${key}: null`);
+        } else if (Array.isArray(val)) {
+            lines.push(`${key}: [${val.join(', ')}]`);
+        } else if (typeof val === 'string' && val.includes('\n')) {
+            lines.push(`${key}: |`);
+            for (const l of val.split('\n')) {
+                lines.push(`  ${l}`);
+            }
+        } else {
+            lines.push(`${key}: "${String(val)}"`);
+        }
+    }
+
+    writeFileSync(filepath, lines.join('\n') + '\n', 'utf8');
+}
+
+function getTaskFiles(): string[] {
+    if (!existsSync(TODO_DIR)) return [];
+    return readdirSync(TODO_DIR).filter(f => f.match(/^TASK-\d+\.yml$/)).sort();
+}
+
+function readIndex(): Record<string, any> {
+    const indexPath = join(TODO_DIR, 'index.yml');
+    if (!existsSync(indexPath)) return { next_id: 1, summary: { open: 0, in_progress: 0, blocked: 0, done: 0, total: 0 }, tasks: [] };
+    return readYamlSimple(indexPath);
+}
+
+function updateIndex(tasks: Record<string, any>[]): void {
+    const counts = { open: 0, in_progress: 0, blocked: 0, done: 0, cancelled: 0 };
+    for (const t of tasks) {
+        const s = t.status as keyof typeof counts;
+        if (s in counts) counts[s]++;
+    }
+
+    const activeTasks = tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
+    const nextId = tasks.length > 0
+        ? Math.max(...tasks.map(t => parseInt(String(t.id).replace('TASK-', ''), 10))) + 1
+        : 1;
+
+    const lines = [
+        '# TODO Index — juliaz_agents',
+        '# Auto-maintained by task-manager.',
+        '',
+        `next_id: ${nextId}`,
+        '',
+        'summary:',
+        `  open: ${counts.open}`,
+        `  in_progress: ${counts.in_progress}`,
+        `  blocked: ${counts.blocked}`,
+        `  done: ${counts.done}`,
+        `  total: ${tasks.length}`,
+        '',
+        'tasks:',
+    ];
+
+    for (const t of activeTasks) {
+        lines.push(`  - id: ${t.id}`);
+        lines.push(`    title: "${t.title}"`);
+        lines.push(`    status: ${t.status}`);
+        lines.push(`    priority: ${t.priority}`);
+        lines.push(`    assigned_to: ${t.assigned_to || 'system'}`);
+    }
+
+    writeFileSync(join(TODO_DIR, 'index.yml'), lines.join('\n') + '\n', 'utf8');
+}
+
+function manageTasks(args: ManageTasksArgs): string {
+    console.log(`[tools] manage_tasks → action=${args.action}`);
+
+    try {
+        switch (args.action) {
+            case 'list': {
+                const files = getTaskFiles();
+                if (files.length === 0) return 'No tasks found. The TODO queue is empty.';
+
+                const tasks = files.map(f => readYamlSimple(join(TODO_DIR, f)));
+                const open = tasks.filter(t => t.status !== 'done' && t.status !== 'cancelled');
+
+                if (open.length === 0) return 'All tasks are done or cancelled. Queue is clear!';
+
+                const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+                open.sort((a, b) => (priorityOrder[a.priority] ?? 9) - (priorityOrder[b.priority] ?? 9));
+
+                const emoji: Record<string, string> = { critical: '🔴', high: '🟠', medium: '🟡', low: '🟢' };
+                const lines = [`📋 Tasks: ${open.length} active\n`];
+                for (const t of open) {
+                    const e = emoji[t.priority] ?? '⚪';
+                    const status = t.status === 'in_progress' ? ' [IN PROGRESS]' : t.status === 'blocked' ? ' [BLOCKED]' : '';
+                    lines.push(`${e} ${t.id} [${t.priority}] ${t.title}${status}`);
+                }
+                return lines.join('\n');
+            }
+
+            case 'get': {
+                if (!args.task_id) return 'Error: task_id is required for "get" action.';
+                const filepath = join(TODO_DIR, `${args.task_id}.yml`);
+                if (!existsSync(filepath)) return `Error: ${args.task_id} not found.`;
+                return readFileSync(filepath, 'utf8');
+            }
+
+            case 'create': {
+                if (!args.title) return 'Error: title is required for "create" action.';
+
+                const allTasks = getTaskFiles().map(f => readYamlSimple(join(TODO_DIR, f)));
+                const nextNum = allTasks.length > 0
+                    ? Math.max(...allTasks.map(t => parseInt(String(t.id).replace('TASK-', ''), 10))) + 1
+                    : 1;
+                const id = `TASK-${String(nextNum).padStart(3, '0')}`;
+                const today = new Date().toISOString().split('T')[0];
+
+                const task: Record<string, any> = {
+                    id,
+                    title: args.title,
+                    status: 'open',
+                    priority: args.priority ?? 'medium',
+                    created: today,
+                    updated: today,
+                    created_by: 'julia',
+                    assigned_to: args.assigned_to ?? 'system',
+                    tags: args.tags ?? [],
+                    depends_on: [],
+                    due: null,
+                    description: args.description ?? args.title,
+                    plan: null,
+                    notes: `[${today}] Task created.`,
+                };
+
+                writeTaskYaml(join(TODO_DIR, `${id}.yml`), task);
+
+                // Update index
+                allTasks.push(task);
+                updateIndex(allTasks);
+
+                console.log(`[tools] manage_tasks → created ${id}: "${args.title}"`);
+                return `📋 Created ${id}: "${args.title}" [${task.priority}]`;
+            }
+
+            case 'update': {
+                if (!args.task_id) return 'Error: task_id is required for "update" action.';
+                const filepath = join(TODO_DIR, `${args.task_id}.yml`);
+                if (!existsSync(filepath)) return `Error: ${args.task_id} not found.`;
+
+                const task = readYamlSimple(filepath);
+                const today = new Date().toISOString().split('T')[0];
+                const changes: string[] = [];
+
+                if (args.status && args.status !== task.status) {
+                    changes.push(`status: ${task.status} → ${args.status}`);
+                    task.status = args.status;
+                }
+                if (args.priority && args.priority !== task.priority) {
+                    changes.push(`priority: ${task.priority} → ${args.priority}`);
+                    task.priority = args.priority;
+                }
+                if (args.assigned_to && args.assigned_to !== task.assigned_to) {
+                    changes.push(`assigned: ${task.assigned_to} → ${args.assigned_to}`);
+                    task.assigned_to = args.assigned_to;
+                }
+                if (args.note) {
+                    const existingNotes = task.notes ?? '';
+                    task.notes = `[${today}] ${args.note}\n${existingNotes}`;
+                    changes.push('note added');
+                }
+
+                if (changes.length === 0) return `No changes made to ${args.task_id}.`;
+
+                task.updated = today;
+                writeTaskYaml(filepath, task);
+
+                // Update index
+                const allTasks = getTaskFiles().map(f => readYamlSimple(join(TODO_DIR, f)));
+                updateIndex(allTasks);
+
+                console.log(`[tools] manage_tasks → updated ${args.task_id}: ${changes.join(', ')}`);
+                return `📋 Updated ${args.task_id}: ${changes.join(', ')}`;
+            }
+
+            case 'next': {
+                const files = getTaskFiles();
+                const tasks = files.map(f => readYamlSimple(join(TODO_DIR, f)));
+                const open = tasks.filter(t => t.status === 'open' || t.status === 'in_progress');
+
+                if (open.length === 0) return '📋 Nothing to do — all tasks are done or blocked!';
+
+                // Score tasks
+                const priorityScore: Record<string, number> = { critical: 100, high: 40, medium: 20, low: 10 };
+                const scored: Array<{ task: Record<string, any>; score: number }> = open.map(t => {
+                    let score = priorityScore[t.priority] ?? 10;
+                    // Age bonus
+                    const created = new Date(t.created);
+                    const days = Math.floor((Date.now() - created.getTime()) / 86400000);
+                    score += Math.min(days, 30);
+                    // In-progress tasks get a small boost (continue what you started)
+                    if (t.status === 'in_progress') score += 15;
+                    return { task: t, score };
+                });
+
+                scored.sort((a, b) => b.score - a.score);
+                const top = scored[0].task;
+                const topScore = scored[0].score;
+
+                return `📋 Next up: ${top.id} — ${top.title} [${top.priority}]\nReason: Score ${topScore} (priority + age + status). ${top.status === 'in_progress' ? 'Already in progress.' : 'Ready to start.'}`;
+            }
+
+            default:
+                return `Error: unknown action "${args.action}". Use: list, get, create, update, next.`;
+        }
+    } catch (err: any) {
+        return `Error in manage_tasks: ${err.message}`;
+    }
 }

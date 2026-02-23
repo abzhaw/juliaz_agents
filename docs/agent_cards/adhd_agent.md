@@ -7,7 +7,7 @@
 | **Name** | ADHD Agent |
 | **Role** | System hygiene — ambient scanning for structural drift |
 | **Workspace** | `adhd-agent/` |
-| **Status** | 🟡 Designed, not yet automated |
+| **Status** | Autonomous (macOS LaunchAgent, every 4h, RunAtLoad) |
 
 ## What It Does
 
