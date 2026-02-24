@@ -235,11 +235,12 @@ The Analyst uses a triple-redundancy LLM fallback chain: Claude Haiku (primary) 
 **Schedule**: PM2 cron every 15 minutes
 **Key files**: `shared-findings/incidents.json` (state), `analyst/config/suppressions.json` (noise filter)
 
-### 📄 Docs Agent — The Documentation Guardian
+### 📖 Docs Agent — Self-Documenting Intelligence
 
-The Docs Agent (`docs-agent/`) detects documentation drift by comparing actual system state against `docs/` claims. It checks PM2 names vs. agent cards, identity file completeness, and system overview accuracy.
+The Docs Agent (`docs-agent/`) runs a two-phase pipeline. Phase 1 is a fast bash script that checks for structural drift (missing files, undocumented services). Phase 2 uses LLM reasoning (Haiku → GPT-4o → rules fallback) to analyze drift semantically, detect system changes via git, and generate documentation proposals. Proposals are staged in `docs-agent/proposals/` for human review — production docs are never overwritten automatically.
 
 **Schedule**: PM2 cron every 12 hours
+**Key files**: `docs-agent/proposals/index.json` (proposal manifest), `docs-agent/memory/state.json` (run state)
 
 ---
 
@@ -253,7 +254,7 @@ Julia's system includes multiple cooperating agents, each with a distinct role:
 | **Julia (Orchestrator)** | Primary brain — conversation, tool-calling, delegation | ✅ Active |
 | **OpenClawJulia** | Communication gateway — Telegram routing | ✅ Active |
 | **Cowork Claude** | Claude sub-agent — complex reasoning via MCP | ✅ Active |
-| **Docs Agent** | System documentation — keeps docs/ updated | ✅ Active |
+| **Docs Agent** | Self-documenting intelligence — drift detection + proposals | ✅ Autonomous (PM2 cron, 12h) |
 | **ADHD Agent** | System hygiene — scans for structural drift | ✅ Autonomous (LaunchAgent, 4h) |
 | **Sentinel (Security)** | Daily security scanning + self-learning | ✅ Autonomous (PM2 cron, 07:00) |
 | **Task Manager** | Project management — TODO queue integrity | ✅ Autonomous (PM2 cron, 6h) |

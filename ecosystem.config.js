@@ -140,6 +140,21 @@ module.exports = {
                 NODE_ENV: 'production',
                 ...secrets
             }
+        },
+        // Docs Agent — LLM-powered documentation drift detection and self-documentation
+        // Structural checks (bash) + semantic analysis (LLM) + proposal generation
+        {
+            name: 'docs-agent',
+            cwd: './docs-agent',
+            script: 'npm',
+            args: 'run start',
+            autorestart: false,
+            cron_restart: '0 */12 * * *', // every 12 hours
+            watch: false,
+            env: {
+                NODE_ENV: 'production',
+                ...secrets
+            }
         }
     ]
 };
