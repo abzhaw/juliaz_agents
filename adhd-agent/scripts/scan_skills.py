@@ -9,14 +9,11 @@ Usage: python3 scan_skills.py [--registries path1 path2 ...] [--json]
        python3 scan_skills.py [--no-exceptions]  # ignore all exception rules
 """
 
-import os
 import re
 import json
 import argparse
-import difflib
 from pathlib import Path
 from dataclasses import dataclass, asdict
-from typing import Optional
 
 # ─── Default registry paths ───────────────────────────────────────────────────
 
@@ -200,9 +197,44 @@ def normalize_name(name: str) -> str:
 
 
 def desc_similarity(a: str, b: str) -> float:
+    """Jaccard similarity on meaningful tokens (programming-domain stop words removed)."""
     if not a or not b:
         return 0.0
-    return difflib.SequenceMatcher(None, a[:300], b[:300]).ratio()
+
+    # Programming-domain stop words — terms that appear in ALL skill descriptions
+    # and don't indicate actual similarity
+    stop_words = {
+        # Generic programming terms
+        "code", "function", "method", "class", "module", "package",
+        "error", "handling", "exception", "throw", "catch", "try",
+        "best", "practice", "pattern", "example", "usage", "common",
+        "create", "build", "implement", "configure", "setup", "install",
+        "test", "testing", "debug", "debugging", "log", "logging",
+        "return", "value", "variable", "parameter", "argument",
+        "data", "type", "string", "number", "boolean", "array", "object",
+        "ensure", "avoid", "prefer", "should", "always", "never", "must",
+        "file", "directory", "path", "import", "export", "require",
+        "server", "client", "request", "response", "api", "endpoint",
+        "async", "await", "promise", "callback", "event",
+        "read", "write", "update", "delete", "get", "set", "list",
+        "config", "option", "setting", "env", "environment",
+        "run", "start", "stop", "restart", "deploy",
+        "skill", "agent", "tool", "script", "command",
+        # Common English filler words
+        "the", "and", "for", "with", "that", "this", "from",
+        "not", "are", "was", "but", "can", "has", "had",
+        "will", "may", "use", "how", "when", "what", "which",
+        "also", "more", "than", "into", "been", "each",
+        "your", "their", "about", "between", "through",
+    }
+
+    tokens_a = set(re.findall(r'\b[a-z]{2,}\b', a.lower())) - stop_words
+    tokens_b = set(re.findall(r'\b[a-z]{2,}\b', b.lower())) - stop_words
+    if not tokens_a or not tokens_b:
+        return 0.0
+    intersection = tokens_a & tokens_b
+    union = tokens_a | tokens_b
+    return len(intersection) / len(union)
 
 
 def find_exact_duplicates(all_skills: list[Skill], exceptions: dict) -> list[Finding]:
@@ -287,6 +319,12 @@ def find_near_duplicates(all_skills: list[Skill], exceptions: dict, threshold: f
                    is_cross_registry_exception(b.name, a.registry, b.registry, exceptions):
                     continue
 
+            # Language-aware: different languages can't be near-duplicates
+            langs_a = extract_language_tags(a.name, a.description)
+            langs_b = extract_language_tags(b.name, b.description)
+            if langs_a and langs_b and not langs_a.intersection(langs_b):
+                continue
+
             sim = desc_similarity(a.description, b.description)
             if sim >= threshold:
                 pair_key = tuple(sorted([a.path, b.path]))
@@ -329,6 +367,18 @@ def find_empty_skills(all_skills: list[Skill]) -> list[Finding]:
     return findings
 
 
+LANGUAGE_TAGS = {
+    "nodejs", "node", "javascript", "js", "typescript", "ts",
+    "python", "py", "go", "golang", "rust", "java", "swift",
+    "ruby", "php", "csharp", "dotnet", "kotlin", "scala",
+}
+
+def extract_language_tags(name: str, desc: str) -> set[str]:
+    """Extract programming language identifiers from skill name and description."""
+    tokens = set(re.findall(r'\b[a-z]+\b', (name + " " + desc).lower()))
+    return tokens.intersection(LANGUAGE_TAGS)
+
+
 def find_merge_candidates(all_skills: list[Skill], threshold: float = 0.50) -> list[Finding]:
     """Like near_duplicates but for skills from the same registry that could be merged."""
     findings = []
@@ -342,8 +392,15 @@ def find_merge_candidates(all_skills: list[Skill], threshold: float = 0.50) -> l
             for b in skills[i+1:]:
                 if normalize_name(a.name) == normalize_name(b.name):
                     continue
+
+                # Language-aware: don't suggest merging skills for different languages
+                langs_a = extract_language_tags(a.name, a.description)
+                langs_b = extract_language_tags(b.name, b.description)
+                if langs_a and langs_b and not langs_a.intersection(langs_b):
+                    continue  # different programming languages — skip entirely
+
                 sim = desc_similarity(a.description, b.description)
-                if 0.50 <= sim < 0.75:
+                if threshold <= sim < 0.75:
                     pair_key = tuple(sorted([a.path, b.path]))
                     if pair_key in seen_pairs:
                         continue
@@ -402,6 +459,29 @@ def main():
     min_sev = severity_order[args.min_severity]
     findings = [f for f in findings if severity_order.get(f.severity, 0) >= min_sev]
     findings.sort(key=lambda f: severity_order.get(f.severity, 0), reverse=True)
+
+    # Write to shared-findings for Analyst consumption
+    from datetime import datetime, timezone
+    shared_output = {
+        "agent": "adhd-agent",
+        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "findings": [
+            {
+                "id": f.fingerprint,
+                "severity": f.severity,
+                "category": f.kind,
+                "title": f.title,
+                "detail": f.description,
+                "first_seen": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "related_to": [],
+            }
+            for f in findings
+        ],
+        "healthy": [],
+    }
+    shared_path = Path(BASE / "shared-findings" / "adhd-agent.json")
+    shared_path.parent.mkdir(parents=True, exist_ok=True)
+    shared_path.write_text(json.dumps(shared_output, indent=2))
 
     if args.json:
         output = {
