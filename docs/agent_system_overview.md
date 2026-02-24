@@ -197,7 +197,7 @@ The frontend (`./frontend/`, port 3002) is a Next.js 15 web application serving 
 
 ## The Ambient Agents
 
-In addition to the core components above, Julia has four **ambient agents** — autonomous background processes that keep the system healthy, secure, and organized without manual intervention.
+In addition to the core components above, Julia has five **ambient agents** — autonomous background processes that keep the system healthy, secure, and organized without manual intervention. A sixth agent, the **Analyst**, correlates their findings into unified incident digests.
 
 ### 🔐 Sentinel — The Security Scanner
 
@@ -226,6 +226,21 @@ The ADHD Agent (`adhd-agent/`) scans for structural drift: duplicate skills, orp
 
 **Schedule**: macOS LaunchAgent every 4 hours
 
+### 🔬 Analyst — The Correlation Engine
+
+The Analyst (`analyst/`) is the intelligent layer that sits above all ambient agents. Every 15 minutes, it reads structured JSON findings from all collectors (`shared-findings/*.json`), correlates them using a system dependency graph, and produces unified incident digests sent via Telegram.
+
+The Analyst uses a triple-redundancy LLM fallback chain: Claude Haiku (primary) → GPT-4o (fallback) → rules-based engine (always available). It manages incident lifecycle (create → escalate → resolve), enforces adaptive notification cadence (immediate for new/recovery, hourly for ongoing, daily for healthy), and maintains a circuit breaker (max 6 messages/hour) to prevent alert fatigue.
+
+**Schedule**: PM2 cron every 15 minutes
+**Key files**: `shared-findings/incidents.json` (state), `analyst/config/suppressions.json` (noise filter)
+
+### 📄 Docs Agent — The Documentation Guardian
+
+The Docs Agent (`docs-agent/`) detects documentation drift by comparing actual system state against `docs/` claims. It checks PM2 names vs. agent cards, identity file completeness, and system overview accuracy.
+
+**Schedule**: PM2 cron every 12 hours
+
 ---
 
 ## The Agents
@@ -243,6 +258,7 @@ Julia's system includes multiple cooperating agents, each with a distinct role:
 | **Sentinel (Security)** | Daily security scanning + self-learning | ✅ Autonomous (PM2 cron, 07:00) |
 | **Task Manager** | Project management — TODO queue integrity | ✅ Autonomous (PM2 cron, 6h) |
 | **Health Checker** | System watchdog — monitors all services | ✅ Autonomous (PM2 cron, 15min) |
+| **Analyst** | Correlation engine — unified incident digests | ✅ Autonomous (PM2 cron, 15min) |
 | **Thesis Agent (Schreiber)** | Research/writing — master's thesis support | 🟡 Manual (on-demand) |
 | **Julia Medium** | Ambient researcher — article drafting | 🟡 Manual (on-demand) |
 | **Wish Companion** | Special mode — end-of-life wish fulfillment | ✅ Embedded in Julia |
