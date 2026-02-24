@@ -1,0 +1,18 @@
+{
+  "known_safe_ports": {
+    "5000": "macOS AirPlay Receiver",
+    "7000": "macOS AirDrop",
+    "49152-49999": "Ephemeral ports (Electron, VS Code, language servers)"
+  },
+  "known_safe_processes": [
+    "Electron",
+    "Code Helper",
+    "com.apple",
+    "rapportd",
+    "ControlCe",
+    "AMPLibraryAgent",
+    "Google Chrome He"
+  ],
+  "suppressed_findings": {},
+  "language_tags": ["nodejs", "node", "python", "typescript", "go", "rust", "java", "swift"]
+}
