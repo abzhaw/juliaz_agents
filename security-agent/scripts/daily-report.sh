@@ -79,6 +79,8 @@ for port in "${EXPECTED_PORTS[@]}"; do
 done
 
 # Unknown ports
+KNOWN_SYSTEM_PROCS="Electron|Code.Helper|com\.apple|rapportd|ControlCe|AMPLibrary|Google.Chrome.He|CoreAudio|WindowServer"
+
 UNKNOWN_PORTS=$(echo "$PORT_OUTPUT" | awk '{print $9}' | grep -oE ':[0-9]+$' | tr -d ':' | sort -u | \
     while read p; do
         skip=false
@@ -90,8 +92,13 @@ UNKNOWN_PORTS=$(echo "$PORT_OUTPUT" | awk '{print $9}' | grep -oE ':[0-9]+$' | t
 if [ -n "$UNKNOWN_PORTS" ]; then
     while IFS= read -r port; do
         PROCESS=$(echo "$PORT_OUTPUT" | grep ":$port " | awk '{print $1, $2}' | head -1)
-        echo "- 🟠 Port $port — UNKNOWN listener: $PROCESS" >> "$REPORT_FILE"
-        add_finding "🟠" "port-scan" "Unknown port $port open: $PROCESS"
+        PROC_NAME=$(echo "$PROCESS" | awk '{print $1}')
+        if echo "$PROC_NAME" | grep -qE "$KNOWN_SYSTEM_PROCS"; then
+            echo "- ℹ️  Port $port — system process: $PROCESS" >> "$REPORT_FILE"
+        else
+            echo "- 🟠 Port $port — UNKNOWN listener: $PROCESS" >> "$REPORT_FILE"
+            add_finding "🟠" "port-scan" "Unknown port $port open: $PROCESS"
+        fi
     done <<< "$UNKNOWN_PORTS"
 else
     echo "- ✅ No unexpected ports detected" >> "$REPORT_FILE"
@@ -247,10 +254,18 @@ echo "" >> "$REPORT_FILE"
 echo "## 📋 Log Analysis (last 24h)" >> "$REPORT_FILE"
 echo "" >> "$REPORT_FILE"
 
+# Use date for 24h window
+YESTERDAY=$(date -v-1d +"%Y-%m-%d" 2>/dev/null || date -d "yesterday" +"%Y-%m-%d" 2>/dev/null || echo "")
+
 for service in orchestrator bridge frontend cowork-mcp; do
     LOG_FILE=$(ls "$HOME/.pm2/logs/${service}-out.log" 2>/dev/null || true)
     if [ -f "$LOG_FILE" ]; then
-        ERRORS=$(grep -c "ERROR\|FATAL\|error\|Error" "$LOG_FILE" 2>/dev/null || echo 0)
+        if [ -n "$YESTERDAY" ]; then
+            ERRORS=$(grep "$TODAY\|$YESTERDAY" "$LOG_FILE" 2>/dev/null | grep -c "ERROR\|FATAL" 2>/dev/null || echo 0)
+        else
+            # Fallback: count errors in last 1000 lines
+            ERRORS=$(tail -1000 "$LOG_FILE" | grep -c "ERROR\|FATAL" 2>/dev/null || echo 0)
+        fi
         if [ "$ERRORS" -gt 50 ]; then
             echo "- 🟠 **$service**: $ERRORS errors in log" >> "$REPORT_FILE"
             add_finding "🟠" "logs" "$service log has $ERRORS errors"
@@ -436,6 +451,49 @@ cat >> "$MEMORY_DIR/learnings.md" << JOURNAL
 - Total findings: $TOTAL (🔴$CRITICAL 🟠$HIGH 🟡$MEDIUM 🟢$LOW)
 - Status: $OVERALL_STATUS
 JOURNAL
+
+# ── Write shared-findings output ─────────────────────────────────────────────
+python3 - <<PYEOF
+import json, os
+from datetime import datetime, timezone
+
+findings_list = []
+for line in """$(echo -e "$FINDINGS")""".strip().split("\n"):
+    line = line.strip()
+    if not line:
+        continue
+    # Parse: "🔴 [section] message" or "🟠 [section] message"
+    parts = line.split(" ", 2)
+    if len(parts) < 3:
+        continue
+    emoji, section_raw, message = parts[0], parts[1], parts[2]
+    section = section_raw.strip("[]")
+    severity_map = {"🔴": "critical", "🟠": "high", "🟡": "medium", "🟢": "low"}
+    severity = severity_map.get(emoji, "info")
+    fid = f"sentinel-{section}-{abs(hash(message)) % 10000}"
+    findings_list.append({
+        "id": fid,
+        "severity": severity,
+        "category": section,
+        "title": message[:100],
+        "detail": message,
+        "first_seen": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "related_to": [],
+    })
+
+output = {
+    "agent": "sentinel",
+    "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "findings": findings_list,
+    "healthy": [],
+}
+
+shared_path = "/Users/raphael/juliaz_agents/shared-findings/sentinel.json"
+os.makedirs(os.path.dirname(shared_path), exist_ok=True)
+with open(shared_path, "w") as f:
+    json.dump(output, f, indent=2)
+print(f"[sentinel] {len(findings_list)} findings → {shared_path}")
+PYEOF
 
 # ─────────────────────────────────────────────────────────────────────────────
 # SEND TELEGRAM SUMMARY
