@@ -125,6 +125,21 @@ module.exports = {
                 PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
                 ...secrets
             }
+        },
+        // Analyst — Correlates ambient agent findings into unified incident digests
+        // Reads shared-findings/*.json, calls LLM (Haiku → GPT-4o → rules), manages incidents
+        {
+            name: 'analyst',
+            cwd: './analyst',
+            script: 'npm',
+            args: 'run start',
+            autorestart: false,
+            cron_restart: '*/15 * * * *', // every 15 minutes (matches health-checker)
+            watch: false,
+            env: {
+                NODE_ENV: 'production',
+                ...secrets
+            }
         }
     ]
 };
