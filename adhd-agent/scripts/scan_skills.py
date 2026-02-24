@@ -8,6 +8,7 @@ Usage: python3 scan_skills.py [--registries path1 path2 ...] [--json]
        python3 scan_skills.py [--exceptions path/to/exceptions.json]
        python3 scan_skills.py [--no-exceptions]  # ignore all exception rules
 """
+from __future__ import annotations
 
 import os
 import re
@@ -16,11 +17,10 @@ import argparse
 import difflib
 from pathlib import Path
 from dataclasses import dataclass, asdict
-from typing import Optional
 
 # ─── Default registry paths ───────────────────────────────────────────────────
 
-BASE = Path("/Users/raphael/Documents/Devs/juliaz_agents")
+BASE = Path("/Users/raphael/juliaz_agents")
 
 DEFAULT_REGISTRIES = [
     BASE / ".claude/skills",
@@ -48,7 +48,7 @@ class Finding:
     severity: str        # high | medium | low | info
     title: str
     description: str
-    affected_paths: list
+    affected_paths: list[str]
     proposal: str
     fingerprint: str     # stable ID for deduplication across runs
 
@@ -202,7 +202,27 @@ def normalize_name(name: str) -> str:
 def desc_similarity(a: str, b: str) -> float:
     if not a or not b:
         return 0.0
-    return difflib.SequenceMatcher(None, a[:300], b[:300]).ratio()
+
+    # Stop words and boilerplate to ignore
+    stop_words = {"the", "and", "a", "to", "of", "in", "for", "is", "on", "that", "by", "this", "with", "i", "you", "it", "not", "or", "be", "are", "from", "at", "as", "your", "all", "have", "new", "more", "an", "was", "we", "will", "home", "can", "us", "about", "if", "page", "my", "has", "search", "free", "but", "our", "one", "other", "do", "no", "information", "time", "they", "site", "he", "up", "may", "what", "which", "their", "news", "out", "use", "any", "there", "see", "only", "so", "his", "when", "contact", "here", "business", "who", "web", "also", "now", "help", "get", "pm", "view", "online", "c", "e", "first", "am", "been", "would", "how", "were", "me", "s", "services", "some", "these", "click", "its", "like", "service", "x", "than", "find", "price", "date", "back", "top", "people", "had", "list", "name", "just", "over", "state", "year", "day", "into", "email", "two", "health", "n", "world", "re", "next", "used", "go", "b", "work", "last", "most", "products", "music", "buy", "data", "make", "them", "should", "product", "system", "post", "her", "city", "t", "add", "policy", "number", "such", "please", "available", "copyright", "support", "message", "after", "best", "software", "then", "jan", "good", "video", "well", "d", "where", "info", "rights", "public", "books", "high", "school", "through", "m", "each", "links", "she", "review", "years", "order", "very", "privacy", "book", "items", "company", "read", "group", "sex", "need", "many", "user", "said", "de", "does", "set", "under", "general", "research", "university", "january", "mail", "full", "map", "reviews", "program", "life", "know", "games", "way", "days", "management", "p", "part", "could", "great", "united", "hotel", "real", "f", "item", "international", "center", "ebay", "must", "store", "travel", "comments", "made", "development", "report", "off", "member", "details", "line", "terms", "before", "hotels", "did", "send", "right", "type", "because", "local", "those", "using", "results", "office", "education", "national", "car", "design", "take", "posted", "internet", "address", "community", "within", "states", "area", "want", "phone", "dvd", "shipping", "reserved", "subject", "between", "forum", "family", "l", "long", "based", "w", "code", "show", "o", "even", "black", "check", "special", "prices", "website", "index", "women", "much", "sign", "file", "link", "open", "today", "technology", "south", "case", "project", "same", "pages", "uk", "version", "section", "own", "found", "sports", "house", "related", "security", "both", "county", "american", "photo", "game", "members", "power", "while", "care", "network", "down", "computer", "systems", "three", "total", "place", "end", "following", "download", "h", "him", "without", "per", "access", "think", "north", "resources", "current", "posts", "big", "media", "law", "control", "water", "history", "pictures", "size", "art", "personal", "since", "including", "guide", "shop", "directory", "board", "location", "change", "white", "text", "small", "rating", "rate", "government", "children", "during", "usa", "return", "students", "v", "shopping", "account", "times", "sites", "level", "digital", "profile", "previous", "form", "events", "love", "old", "john", "main", "call", "hours", "image", "department", "title", "description", "non", "k", "y", "insurance", "another", "why", "shall", "property", "class", "cd", "still", "money", "quality", "every", "listing", "content", "country", "private", "little", "visit", "save", "tools", "low", "reply", "customer", "december", "compare", "movies", "include", "college", "value", "article", "york", "man", "card", "jobs", "provide", "j", "food", "source", "author", "different", "press", "u", "learn", "sale", "around", "print", "course", "job", "canada", "process", "teen", "room", "stock", "training", "too", "credit", "point", "join", "science", "men", "categories", "advanced", "west", "sales", "look", "english", "left", "team", "estate", "box", "conditions", "select", "windows", "photos", "thread", "week", "category", "note", "live", "large", "gallery", "table", "register", "however", "june", "october", "november", "market", "library", "really", "action", "start", "series", "model", "features", "air", "industry", "plan", "human", "provided", "tv", "yes", "required", "second", "hot", "accessories", "cost", "movie", "forums", "march", "la", "september", "better", "say", "questions", "july", "yahoo", "going", "medical", "test", "friend", "come", "server", "studios", "search", "skill", "agent", "use", "when", "this", "files", "scripts", "run", "how"}
+
+    def get_tokens(s):
+        # Convert to lowercase and find alphabetic tokens
+        tokens = re.findall(r'\b[a-z]+\b', s.lower())
+        return {t for t in tokens if t not in stop_words and len(t) > 2}
+
+    tokens_a = get_tokens(a)
+    tokens_b = get_tokens(b)
+
+    if not tokens_a and not tokens_b:
+        return 0.0
+    if not tokens_a or not tokens_b:
+        return 0.0
+
+    intersection = len(tokens_a.intersection(tokens_b))
+    union = len(tokens_a.union(tokens_b))
+
+    return intersection / union
 
 
 def find_exact_duplicates(all_skills: list[Skill], exceptions: dict) -> list[Finding]:
@@ -222,7 +242,8 @@ def find_exact_duplicates(all_skills: list[Skill], exceptions: dict) -> list[Fin
         # Check if ALL affected registry pairs are covered by an exception rule
         all_pairs_excepted = True
         for i, sa in enumerate(skills):
-            for sb in skills[i+1:]:
+            for j in range(i + 1, len(skills)):
+                sb = skills[j]
                 if sa.registry != sb.registry:
                     if not is_cross_registry_exception(norm_name, sa.registry, sb.registry, exceptions):
                         all_pairs_excepted = False
@@ -277,7 +298,8 @@ def find_near_duplicates(all_skills: list[Skill], exceptions: dict, threshold: f
     seen_pairs = set()
 
     for i, a in enumerate(all_skills):
-        for b in all_skills[i+1:]:
+        for j in range(i + 1, len(all_skills)):
+            b = all_skills[j]
             if normalize_name(a.name) == normalize_name(b.name):
                 continue  # already caught as exact duplicate
 
@@ -339,10 +361,22 @@ def find_merge_candidates(all_skills: list[Skill], threshold: float = 0.50) -> l
     seen_pairs = set()
     for registry, skills in by_registry.items():
         for i, a in enumerate(skills):
-            for b in skills[i+1:]:
+            for j in range(i + 1, len(skills)):
+                b = skills[j]
                 if normalize_name(a.name) == normalize_name(b.name):
                     continue
                 sim = desc_similarity(a.description, b.description)
+
+                # Penalize similarity if skill names conceptually mismatch completely
+                def get_core_tokens(name: str) -> set:
+                    ignore = {"patterns", "best", "practices", "expert", "design", "development", "integration", "management", "systems", "advanced", "workflows", "engineering", "mastery", "operations", "agent", "systems", "workflow"}
+                    return set(t for t in re.findall(r'[a-z]+', name.lower()) if t not in ignore)
+
+                core_a = get_core_tokens(a.name)
+                core_b = get_core_tokens(b.name)
+                if core_a and core_b and not core_a.intersection(core_b):
+                    sim -= 0.20
+
                 if 0.50 <= sim < 0.75:
                     pair_key = tuple(sorted([a.path, b.path]))
                     if pair_key in seen_pairs:

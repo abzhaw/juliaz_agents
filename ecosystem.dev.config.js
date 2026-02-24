@@ -36,6 +36,7 @@ module.exports = {
             max_restarts: 10,
             env: {
                 NODE_ENV: 'development',
+                ...secrets
             }
         },
         {
@@ -107,6 +108,20 @@ module.exports = {
             interpreter: '/bin/bash',
             autorestart: false,
             cron_restart: '*/15 * * * *',
+            watch: false,
+            env: {
+                PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+                ...secrets
+            }
+        },
+        // Docs Agent — In dev mode, every 12 hours
+        {
+            name: 'docs-agent',
+            cwd: './docs-agent',
+            script: './scripts/docs_drift_check.sh',
+            interpreter: '/bin/bash',
+            autorestart: false,
+            cron_restart: '0 */12 * * *',
             watch: false,
             env: {
                 PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',

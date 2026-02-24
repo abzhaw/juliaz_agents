@@ -210,15 +210,15 @@ run_cycle() {
   # Load snoozed fingerprints
   SNOOZED=$(load_snoozed)
 
-  # Process findings one at a time
-  python3 - <<PYEOF
+  # Process findings one at a time — pipe JSON via stdin to avoid quoting issues
+  echo "$SCAN_OUTPUT" | python3 -c "
 import json, sys
-data = json.loads('''$SCAN_OUTPUT''')
+data = json.load(sys.stdin)
 findings = data.get('findings', [])
-for i, f in enumerate(findings):
+for f in findings:
     print(json.dumps(f))
-PYEOF
-  | while IFS= read -r FINDING_JSON; do
+" | while IFS= read -r FINDING_JSON; do
+      [[ -z "$FINDING_JSON" ]] && continue
       FINGERPRINT=$(echo "$FINDING_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin)['fingerprint'])" 2>/dev/null || continue)
       KIND=$(echo "$FINDING_JSON"        | python3 -c "import json,sys; print(json.load(sys.stdin)['kind'])" 2>/dev/null || continue)
       TITLE=$(echo "$FINDING_JSON"       | python3 -c "import json,sys; print(json.load(sys.stdin)['title'])" 2>/dev/null || continue)
@@ -245,6 +245,23 @@ PYEOF
         continue
       fi
 
+      # ── Rate Limit Merge Candidates to 1 per day ──
+      if [[ "$KIND" == "merge_candidate" ]]; then
+        LOCAL_TODAY=$(date +%Y-%m-%d)
+        LAST_MERGE_FILE="$AGENT_DIR/memory/last_merge.txt"
+        LAST_MERGE_DATE=""
+        if [[ -f "$LAST_MERGE_FILE" ]]; then
+          LAST_MERGE_DATE=$(cat "$LAST_MERGE_FILE")
+        fi
+
+        if [[ "$LAST_MERGE_DATE" == "$LOCAL_TODAY" ]]; then
+          log "⏭️  Skipping (Rate limited): Already proposed a merge today. ($FINGERPRINT)"
+          continue
+        else
+          echo "$LOCAL_TODAY" > "$LAST_MERGE_FILE"
+        fi
+      fi
+
       # Format and send Telegram message
       MESSAGE=$(format_telegram_message "$KIND" "$TITLE" "$DESCRIPTION" "$PROPOSAL")
 
@@ -254,7 +271,9 @@ PYEOF
       fi
 
       # Poll for approval
-      DECISION=$(bash "$SCRIPT_DIR/poll_approval.sh" "$FINGERPRINT" "${APPROVAL_TIMEOUT_SECONDS:-600}" 2>/dev/null || echo "TIMEOUT")
+      if ! DECISION=$(bash "$SCRIPT_DIR/poll_approval.sh" "$FINGERPRINT" "${APPROVAL_TIMEOUT_SECONDS:-600}" 2>/dev/null); then
+        DECISION="TIMEOUT"
+      fi
       log "📩 Decision for '$FINGERPRINT': $DECISION"
 
       case "$DECISION" in

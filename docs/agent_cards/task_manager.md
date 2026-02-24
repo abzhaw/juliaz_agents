@@ -20,6 +20,9 @@ The Task Manager maintains the shared TODO queue in `todo/`. It checks task queu
 - Unblocked tasks: Dependencies resolved? Auto-move from `blocked` to `open`
 - Orphan files: Task files not listed in the index
 
+## Trigger Mechanics (Silent-Unless-Actionable)
+The Task Manager evaluates the `todo/` queue on its 6-hour cycle but is **completely silent** unless it finds an actionable problem (like a task stuck in progress for over 7 days, or an orphaned file). It also sends a weekly system summary on Mondays.
+
 ## Behavior
 
 - **Normal (nothing to report)**: Silent

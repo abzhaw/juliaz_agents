@@ -21,6 +21,9 @@ The Health Checker runs every 15 minutes and verifies that every service, ambien
 - LaunchAgents: com.juliaz.adhd-agent, com.juliaz.start-system
 - OpenClaw gateway health
 
+## Trigger Mechanics (Silent-Unless-Actionable)
+The Health Checker evaluates the system on its 15-minute cycle but is **completely silent** if all services are healthy.
+
 ## Behavior
 
 - **All healthy**: Silent (log only)

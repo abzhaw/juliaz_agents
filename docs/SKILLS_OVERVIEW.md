@@ -94,7 +94,7 @@ When the orchestrator delegates to Claude via Cowork MCP, Claude has access to t
 
 ## 4. Ambient Agent Skills — Background Workers
 
-These agents run alongside Julia and contribute their skills passively or on-demand.
+These agents run alongside Julia and contribute their skills passively. They utilize a **Silent-Unless-Actionable Trigger Mechanic** — their skills evaluate the system state on a schedule, but they intentionally abort sending Telegram messages if the system is healthy.
 
 ### ADHD Agent — System Hygiene
 

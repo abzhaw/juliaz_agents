@@ -24,6 +24,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, '../data');
 const QUEUE_FILE = path.join(DATA_DIR, 'queue.json');
 const PORT = Number(process.env.BRIDGE_PORT ?? 3001);
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
+const OUTBOUND_POLL_MS = 5_000; // check for undelivered outbound messages every 5s
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -36,6 +38,34 @@ interface TelegramMessage {
     timestamp: string;
     status: 'pending' | 'processing' | 'replied' | 'consumed';
     reply?: string;
+    outbound?: boolean; // true = proactive message, bridge delivers to Telegram directly
+}
+
+// ─── Telegram Bot API ────────────────────────────────────────────────────────
+
+async function deliverToTelegram(chatId: string, text: string): Promise<boolean> {
+    if (!TELEGRAM_BOT_TOKEN) {
+        log(`⚠ Cannot deliver to Telegram: TELEGRAM_BOT_TOKEN not set`);
+        return false;
+    }
+    try {
+        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: chatId, text }),
+            signal: AbortSignal.timeout(10_000),
+        });
+        const data = await res.json() as { ok: boolean; description?: string };
+        if (!data.ok) {
+            log(`⚠ Telegram API error for ${chatId}: ${data.description}`);
+            return false;
+        }
+        log(`📨 Delivered to Telegram chat ${chatId}: "${text.slice(0, 60)}"`);
+        return true;
+    } catch (err: any) {
+        log(`⚠ Telegram delivery failed for ${chatId}: ${err.message}`);
+        return false;
+    }
 }
 
 // ─── Queue ────────────────────────────────────────────────────────────────────
@@ -240,15 +270,25 @@ app.post('/reply', async (req: Request, res: Response) => {
         (!msgId && m.chatId === String(chatId) && (m.status === 'pending' || m.status === 'processing'))
     );
     if (msg) {
+        // Reply to an existing incoming message — OpenClaw will poll for this
         msg.status = 'replied';
         msg.reply = String(text);
     } else {
-        messages.push({
+        // Proactive/outbound message — no matching incoming, bridge delivers directly
+        const outboundMsg: TelegramMessage = {
             id: `reply-${randomUUID()}`,
             chatId: String(chatId), userId: '', username: '', text: '',
             timestamp: new Date().toISOString(),
             status: 'replied', reply: String(text),
-        });
+            outbound: true,
+        };
+        messages.push(outboundMsg);
+
+        // Deliver immediately to Telegram
+        const delivered = await deliverToTelegram(String(chatId), String(text));
+        if (delivered) {
+            outboundMsg.status = 'consumed';
+        }
     }
     updateHeartbeat('julia');
     await saveQueue();
@@ -420,13 +460,44 @@ app.all('/mcp', mcpHandler);
 // Root MCP for compatibility
 app.all('/', mcpHandler);
 
+// ─── Outbound Delivery Loop ───────────────────────────────────────────────────
+
+async function deliverOutboundMessages(): Promise<void> {
+    const undelivered = messages.filter(m => m.outbound && m.status === 'replied' && m.reply);
+    if (undelivered.length === 0) return;
+
+    let delivered = 0;
+    for (const msg of undelivered) {
+        const ok = await deliverToTelegram(msg.chatId, msg.reply!);
+        if (ok) {
+            msg.status = 'consumed';
+            delivered++;
+        }
+    }
+    if (delivered > 0) {
+        await saveQueue();
+        log(`Outbound loop: delivered ${delivered}/${undelivered.length} messages`);
+    }
+}
+
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 await loadQueue();
+
+// Deliver any outbound messages that were queued before restart
+deliverOutboundMessages();
 
 app.listen(PORT, () => {
     log(`Bridge running on http://localhost:${PORT}`);
     log(`  MCP endpoint:   http://localhost:${PORT}/mcp`);
     log(`  POST /incoming  ← OpenClaw sends Telegram messages here`);
     log(`  GET  /pending-reply/:chatId ← OpenClaw polls for replies`);
+    if (TELEGRAM_BOT_TOKEN) {
+        log(`  📨 Telegram delivery: ENABLED`);
+    } else {
+        log(`  ⚠ Telegram delivery: DISABLED (no TELEGRAM_BOT_TOKEN)`);
+    }
 });
+
+// Background retry loop for failed outbound deliveries
+setInterval(deliverOutboundMessages, OUTBOUND_POLL_MS);

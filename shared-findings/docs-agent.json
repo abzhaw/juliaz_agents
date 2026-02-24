@@ -1,0 +1,25 @@
+{
+  "agent": "docs-agent",
+  "timestamp": "2026-02-24T21:24:37Z",
+  "findings": [
+    {
+      "id": "docs-887",
+      "severity": "low",
+      "category": "documentation-drift",
+      "title": "Missing agent card for *thesis-agent* (has SOUL.md but no card)",
+      "detail": "Missing agent card for *thesis-agent* (has SOUL.md but no card)",
+      "first_seen": "2026-02-24T21:24:37Z",
+      "related_to": []
+    },
+    {
+      "id": "docs-4199",
+      "severity": "low",
+      "category": "documentation-drift",
+      "title": "PM2 service *backend-docker* not in agent\\_system\\_overview.md",
+      "detail": "PM2 service *backend-docker* not in agent\\_system\\_overview.md",
+      "first_seen": "2026-02-24T21:24:37Z",
+      "related_to": []
+    }
+  ],
+  "healthy": []
+}

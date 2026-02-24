@@ -99,6 +99,7 @@ CRON_PM2=(
     "sentinel"
     "task-manager"
     "health-checker"
+    "docs-agent"
 )
 
 if command -v pm2 &>/dev/null; then

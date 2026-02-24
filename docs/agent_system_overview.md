@@ -2,7 +2,7 @@
 
 > **Who this is for**: Anyone who wants to understand this project without needing to be a software developer.
 > **Maintained by**: The Docs Agent — updated whenever the system changes.
-> **Last updated**: 2026-02-23 (Update 4 — Sentinel wired into PM2 + boot)
+> **Last updated**: 2026-02-23 (Update 5 — Autonomy audit: Docs Agent automated, start-system plist, OpenClaw in startup)
 
 ---
 
@@ -197,7 +197,10 @@ The frontend (`./frontend/`, port 3002) is a Next.js 15 web application serving 
 
 ## The Ambient Agents
 
-In addition to the core components above, Julia has four **ambient agents** — autonomous background processes that keep the system healthy, secure, and organized without manual intervention.
+In addition to the core components above, Julia has five **ambient agents** — autonomous background processes that keep the system healthy, secure, and organized without manual intervention.
+
+> **Trigger Mechanics (Silent-Unless-Actionable):**
+> It might feel like there are only two agents active because ambient agents are designed to be **invisible when the system is healthy**. They run strictly on their schedules (every 15 mins to 12 hours) but will *abort* sending any Telegram messages unless they detect a specific anomaly, issue, or structural drift. If you don't hear from them, they are working and the system is clean.
 
 ### 🔐 Sentinel — The Security Scanner
 
@@ -207,24 +210,35 @@ It produces a daily Markdown report and sends a Telegram summary to Raphael. Sen
 
 **Schedule**: PM2 cron daily at 07:00 + boot scan via `start-system.sh`
 **10 scanning skills**: port scan, network audit, credential audit, dependency audit, process audit, log analysis, Docker security, API security, OpenClaw security, self-learning
+**Trigger**: Sends a summary report daily. Only alerts immediately if it finds critical newly exposed ports, secrets, or CVEs that weren't there yesterday.
 
 ### ⚙️ Health Checker — The Watchdog
 
 The Health Checker (`health-checker/`) runs every 15 minutes and verifies that every service, ambient agent, and scheduled process is alive. If a PM2 process is simply stopped, it auto-restarts it. If something is errored or down, it alerts Raphael via Telegram.
 
 **Schedule**: PM2 cron every 15 minutes
+**Trigger**: Completely silent unless a service explicitly returns an error, crashes (HTTP 500/404), or PM2 unexpectedly reports a process as `errored` or `stopped`.
 
 ### 📋 Task Manager — The Project Keeper
 
 The Task Manager (`task-manager/`) monitors the shared TODO queue (`todo/`) for integrity issues: stale tasks, circular dependencies, tasks blocked by resolved dependencies. It produces weekly summaries on Mondays.
 
 **Schedule**: PM2 cron every 6 hours
+**Trigger**: Completely silent unless it detects an abandoned task (`in_progress` > 7 days) or a task that was unblocked because its dependencies finished. Sends a summary on Mondays.
 
 ### 🧹 ADHD Agent — The Hygiene Scanner
 
 The ADHD Agent (`adhd-agent/`) scans for structural drift: duplicate skills, orphaned agents, dead files, overlapping triggers. It proposes fixes via Telegram and waits for approval before acting.
 
 **Schedule**: macOS LaunchAgent every 4 hours
+**Trigger**: Completely silent unless it finds duplicate skills, dead files, overlapping routing logic, or unowned agent folders. Proposals require your YES/NO/LATER approval.
+
+### 📖 Docs Agent — The Drift Detector
+
+The Docs Agent (`docs-agent/`) runs every 12 hours and compares the actual system state against what the documentation claims. It checks agent cards, PM2 configs, port mappings, startup step counts, and identity file completeness. When drift is found, it alerts Raphael via Telegram with specific fix suggestions.
+
+**Schedule**: PM2 cron every 12 hours
+**Trigger**: Completely silent unless the system configuration diverges from the `docs/` folder (e.g., you added an agent or changed a port but forgot to update the documentation).
 
 ---
 
@@ -238,7 +252,7 @@ Julia's system includes multiple cooperating agents, each with a distinct role:
 | **Julia (Orchestrator)** | Primary brain — conversation, tool-calling, delegation | ✅ Active |
 | **OpenClawJulia** | Communication gateway — Telegram routing | ✅ Active |
 | **Cowork Claude** | Claude sub-agent — complex reasoning via MCP | ✅ Active |
-| **Docs Agent** | System documentation — keeps docs/ updated | ✅ Active |
+| **Docs Agent** | Documentation drift detector — alerts when docs diverge from reality | ✅ Autonomous (PM2 cron, 12h) |
 | **ADHD Agent** | System hygiene — scans for structural drift | ✅ Autonomous (LaunchAgent, 4h) |
 | **Sentinel (Security)** | Daily security scanning + self-learning | ✅ Autonomous (PM2 cron, 07:00) |
 | **Task Manager** | Project management — TODO queue integrity | ✅ Autonomous (PM2 cron, 6h) |
@@ -271,8 +285,7 @@ For the full skill and tool inventory, see:
 
 | Issue | Status | Fix |
 |---|---|---|
-| Bridge is stopped | ⚠️ Active | `cd bridge && npm run dev` |
-| MCP tools not registered | ⚠️ Active | Add bridge URL to Antigravity MCP config |
+| No known critical issues | ✅ Clear | Monitored by Health Checker every 15min |
 
 ---
 
@@ -298,4 +311,4 @@ For the full skill and tool inventory, see:
 
 ---
 
-*This document is maintained by the Docs Agent and updated when the system changes. Last updated: 2026-02-23 (Update 4).*
+*This document is maintained by the Docs Agent (now automated) and updated when the system changes. Last updated: 2026-02-23 (Update 5 — Autonomy Audit).*

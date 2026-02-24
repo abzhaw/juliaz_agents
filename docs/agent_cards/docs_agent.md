@@ -1,35 +1,38 @@
 # Agent Card: Docs Agent
 
 ## What is it?
-The Docs Agent is a specialised agent responsible for keeping **plain-language documentation** up to date. Every time Julia's system changes — a component is added, a role shifts, a bug is fixed — the Docs Agent updates the documentation so it stays accurate.
+The Docs Agent is an automated documentation drift detector. It runs every 12 hours and compares the actual system state (PM2 configs, agent directories, port mappings, startup scripts) against what the documentation claims. When it finds discrepancies, it alerts Raphael via Telegram.
 
 ## What problem does it solve?
-Technical systems change fast. Documentation usually lags behind. The Docs Agent closes that gap by automatically updating docs whenever the system changes, so that the developer (and future readers) always have an accurate picture of what the system does.
+Technical systems change fast. Documentation usually lags behind. The Docs Agent closes that gap by automatically detecting when docs have drifted from reality, so they can be corrected before they mislead.
 
 ## How does it connect to the rest of the system?
-The Docs Agent reads change signals from the rest of the system — configuration files, agent workspaces, commit context — and updates the documentation accordingly. It does not modify any agent's code or behaviour.
+The Docs Agent reads configuration files, agent directories, and documentation — then compares them. It does not modify any agent's code, configuration, or behavior.
 
 ```
-Any system change → Docs Agent reads config/context → Updates docs/
+System changes → Docs Agent reads configs + docs → Detects drift → Telegram alert
 ```
+
+## Trigger Mechanics (Silent-Unless-Actionable)
+The Docs Agent evaluates the system on its 12-hour cycle but is **completely silent** unless it detects that the system's runtime reality has drifted from the documentation (e.g., config changes, new ports). If you receive no messages, your documentation is perfectly up-to-date.
 
 ## What can it do?
-- Update `docs/agent_system_overview.md` when the system changes
-- Update individual agent cards in `docs/agent_cards/`
-- Read any agent's configuration or workspace to understand what changed
-- Maintain plain-language explanations that non-developers can understand
+- Detect missing agent cards for agents that have SOUL.md files
+- Verify PM2 ecosystem entries are documented in the system overview
+- Check that documented port numbers match actual configuration
+- Verify start-system.sh step counts match README claims
+- Check that all agent directories have complete identity files
 
 ## What can it NOT do?
-- Change how any agent works — it only describes them
-- Write code
-- Send messages
-- Publish documentation automatically without content review
+- Fix documentation (it only detects drift and alerts)
+- Change how any agent works
+- Write code or modify configurations
+
+## Status
+✅ Autonomous (PM2 cron, every 12h)
 
 ## Workspace
-`docs/` — all documentation output lands here
-
-## Analogy
-The Docs Agent is like a company's communications officer who maintains the internal handbook. Every time someone's role changes or a new team joins, they update the handbook so everyone stays on the same page.
+`docs-agent/` — agent directory with scripts and memory
 
 ---
-*Updated: 2026-02-21 by Docs Agent*
+*Created: 2026-02-23 by Autonomy Audit*

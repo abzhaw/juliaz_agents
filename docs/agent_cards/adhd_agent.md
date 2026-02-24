@@ -28,6 +28,9 @@ The ADHD agent is the immune system of juliaz_agents. It runs in the background,
 - Trigger pollution (overlapping routing conditions)
 - Merge candidates (two small skills that belong together)
 
+## Trigger Mechanics (Silent-Unless-Actionable)
+The ADHD Agent evaluates the system on its 4-hour cycle but is **completely silent** unless it finds actionable entropy (duplicates, orphans, overlaps). If you don't receive a Telegram message, the agent is still running, but the system is clean.
+
 ## Output Format
 
 Sends structured Telegram messages with type, location, proposal, and YES/NO/LATER options.

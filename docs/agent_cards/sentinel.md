@@ -32,6 +32,9 @@ Sentinel is self-learning: after each scan, it updates its baseline of known-goo
 | 9 | OpenClaw Security | Broad skill permissions, CDP port, modified skills |
 | 10 | Self-Learning | Baseline updates, suppression list, trend tracking |
 
+## Trigger Mechanics (Silent-Unless-Actionable)
+Sentinel runs its scans silently and suppresses findings you have already accepted. It only sends an immediate Telegram alert if it finds a **newly exposed critical issue**. Otherwise, it aggregates its findings into a single daily digest at 07:00.
+
 ## Escalation Rules
 
 | Severity | Action |

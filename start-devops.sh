@@ -43,6 +43,37 @@ fi
 
 pm2 save
 
+# Install LaunchAgents (ADHD Agent + start-system)
+echo "📋 Installing LaunchAgents..."
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LAUNCHAGENT_DIR="$HOME/Library/LaunchAgents"
+mkdir -p "$LAUNCHAGENT_DIR" 2>/dev/null || true
+
+# ADHD Agent
+ADHD_SRC="$SCRIPT_DIR/adhd-agent/config/com.juliaz.adhd-agent.plist"
+if [ -f "$ADHD_SRC" ]; then
+    launchctl unload "$LAUNCHAGENT_DIR/com.juliaz.adhd-agent.plist" 2>/dev/null || true
+    cp "$ADHD_SRC" "$LAUNCHAGENT_DIR/com.juliaz.adhd-agent.plist"
+    launchctl load "$LAUNCHAGENT_DIR/com.juliaz.adhd-agent.plist" 2>/dev/null || true
+    echo "   ADHD Agent LaunchAgent installed."
+fi
+
+# Start-System (boot trigger)
+SYSTEM_SRC="$SCRIPT_DIR/config/com.juliaz.start-system.plist"
+if [ -f "$SYSTEM_SRC" ]; then
+    if ! launchctl list 2>/dev/null | grep -q "com.juliaz.start-system"; then
+        cp "$SYSTEM_SRC" "$LAUNCHAGENT_DIR/com.juliaz.start-system.plist"
+        launchctl load "$LAUNCHAGENT_DIR/com.juliaz.start-system.plist" 2>/dev/null || true
+        echo "   Start-System LaunchAgent installed."
+    fi
+fi
+
+# Start OpenClaw gateway if available
+if command -v openclaw &>/dev/null; then
+    echo "🦞 Starting OpenClaw gateway..."
+    openclaw gateway start --force 2>/dev/null &
+fi
+
 echo "✅ System initialized!"
 echo "📡 Open frontend UI at: http://localhost:3002"
 echo "To monitor logs: pm2 logs"

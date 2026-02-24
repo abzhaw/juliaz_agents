@@ -125,6 +125,21 @@ module.exports = {
                 PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
                 ...secrets
             }
+        },
+        // Docs Agent — Detects documentation drift every 12 hours
+        // Compares actual system state against docs/ claims, alerts on discrepancies
+        {
+            name: 'docs-agent',
+            cwd: './docs-agent',
+            script: './scripts/docs_drift_check.sh',
+            interpreter: '/bin/bash',
+            autorestart: false,
+            cron_restart: '0 */12 * * *', // every 12 hours
+            watch: false,
+            env: {
+                PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+                ...secrets
+            }
         }
     ]
 };
