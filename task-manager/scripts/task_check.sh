@@ -144,6 +144,43 @@ if [ -f "$INDEX_FILE" ]; then
     done
 fi
 
+# ── Write shared-findings output ─────────────────────────────────────────────
+python3 - <<PYEOF
+import json, os
+from datetime import datetime, timezone
+
+# Parse findings from the bash variable
+findings_raw = """$(echo -e "$ALERTS")""".strip()
+findings = []
+for line in findings_raw.split("\n"):
+    line = line.strip().lstrip("- ")
+    if not line:
+        continue
+    fid = f"task-{abs(hash(line)) % 10000}"
+    findings.append({
+        "id": fid,
+        "severity": "low",
+        "category": "task-management",
+        "title": line[:100],
+        "detail": line,
+        "first_seen": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "related_to": [],
+    })
+
+output = {
+    "agent": "task-manager",
+    "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "findings": findings,
+    "healthy": [],
+}
+
+shared_path = "/Users/raphael/juliaz_agents/shared-findings/task-manager.json"
+os.makedirs(os.path.dirname(shared_path), exist_ok=True)
+with open(shared_path, "w") as f:
+    json.dump(output, f, indent=2)
+print(f"[task-manager] {len(findings)} findings -> {shared_path}")
+PYEOF
+
 # ── 5. Send weekly summary on Mondays ────────────────────────────────────────
 if [ "$DAY_OF_WEEK" = "1" ]; then
     WEEKLY_MSG=$(cat <<EOF
