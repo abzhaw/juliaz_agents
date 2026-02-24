@@ -17,6 +17,7 @@ import argparse
 import difflib
 from pathlib import Path
 from dataclasses import dataclass, asdict
+from typing import Optional, List, Dict
 
 # ─── Default registry paths ───────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ class Finding:
     severity: str        # high | medium | low | info
     title: str
     description: str
-    affected_paths: list[str]
+    affected_paths: List[str]
     proposal: str
     fingerprint: str     # stable ID for deduplication across runs
 
@@ -163,7 +164,7 @@ def parse_skill_md(path: Path) -> tuple[str, str, int]:
     return name, description, body_lines
 
 
-def load_registry(registry_path: Path) -> list[Skill]:
+def load_registry(registry_path: Path) -> List[Skill]:
     skills = []
     if not registry_path.exists():
         return skills
@@ -225,9 +226,9 @@ def desc_similarity(a: str, b: str) -> float:
     return intersection / union
 
 
-def find_exact_duplicates(all_skills: list[Skill], exceptions: dict) -> list[Finding]:
+def find_exact_duplicates(all_skills: List[Skill], exceptions: dict) -> List[Finding]:
     findings = []
-    by_norm_name: dict[str, list[Skill]] = {}
+    by_norm_name: Dict[str, List[Skill]] = {}
     for s in all_skills:
         key = normalize_name(s.name)
         by_norm_name.setdefault(key, []).append(s)
@@ -243,7 +244,7 @@ def find_exact_duplicates(all_skills: list[Skill], exceptions: dict) -> list[Fin
         all_pairs_excepted = True
         for i, sa in enumerate(skills):
             for j in range(i + 1, len(skills)):
-                sb = skills[j]
+                sb = skills[j]  # type: ignore
                 if sa.registry != sb.registry:
                     if not is_cross_registry_exception(norm_name, sa.registry, sb.registry, exceptions):
                         all_pairs_excepted = False
@@ -293,13 +294,13 @@ def find_exact_duplicates(all_skills: list[Skill], exceptions: dict) -> list[Fin
     return findings
 
 
-def find_near_duplicates(all_skills: list[Skill], exceptions: dict, threshold: float = 0.75) -> list[Finding]:
+def find_near_duplicates(all_skills: List[Skill], exceptions: dict, threshold: float = 0.75) -> List[Finding]:
     findings = []
     seen_pairs = set()
 
     for i, a in enumerate(all_skills):
         for j in range(i + 1, len(all_skills)):
-            b = all_skills[j]
+            b = all_skills[j]  # type: ignore
             if normalize_name(a.name) == normalize_name(b.name):
                 continue  # already caught as exact duplicate
 
@@ -324,8 +325,8 @@ def find_near_duplicates(all_skills: list[Skill], exceptions: dict, threshold: f
                         f"These two skills have very similar descriptions ({int(sim*100)}% overlap):\n"
                         f"  • {a.path}\n"
                         f"  • {b.path}\n"
-                        f"  Desc A: {a.description[:120]}...\n"
-                        f"  Desc B: {b.description[:120]}..."
+                        f"  Desc A: {a.description[:120]}...\n"  # type: ignore
+                        f"  Desc B: {b.description[:120]}..."  # type: ignore
                     ),
                     affected_paths=[a.path, b.path],
                     proposal=f"Review and consider merging '{a.name}' and '{b.name}' into a single skill.",
@@ -335,7 +336,7 @@ def find_near_duplicates(all_skills: list[Skill], exceptions: dict, threshold: f
     return findings
 
 
-def find_empty_skills(all_skills: list[Skill]) -> list[Finding]:
+def find_empty_skills(all_skills: List[Skill]) -> List[Finding]:
     findings = []
     for s in all_skills:
         if s.body_length < 5:
@@ -351,10 +352,10 @@ def find_empty_skills(all_skills: list[Skill]) -> list[Finding]:
     return findings
 
 
-def find_merge_candidates(all_skills: list[Skill], threshold: float = 0.50) -> list[Finding]:
+def find_merge_candidates(all_skills: List[Skill], threshold: float = 0.50) -> List[Finding]:
     """Like near_duplicates but for skills from the same registry that could be merged."""
     findings = []
-    by_registry: dict[str, list[Skill]] = {}
+    by_registry: Dict[str, List[Skill]] = {}
     for s in all_skills:
         by_registry.setdefault(s.registry, []).append(s)
 
@@ -362,7 +363,7 @@ def find_merge_candidates(all_skills: list[Skill], threshold: float = 0.50) -> l
     for registry, skills in by_registry.items():
         for i, a in enumerate(skills):
             for j in range(i + 1, len(skills)):
-                b = skills[j]
+                b = skills[j]  # type: ignore
                 if normalize_name(a.name) == normalize_name(b.name):
                     continue
                 sim = desc_similarity(a.description, b.description)
@@ -425,7 +426,7 @@ def main():
         skills = load_registry(rp)
         all_skills.extend(skills)
 
-    findings: list[Finding] = []
+    findings: List[Finding] = []
     findings += find_exact_duplicates(all_skills, exceptions)
     findings += find_near_duplicates(all_skills, exceptions)
     findings += find_empty_skills(all_skills)
@@ -442,7 +443,7 @@ def main():
             "scanned_registries": [str(p) for p in registry_paths],
             "total_skills": len(all_skills),
             "exceptions_file": args.exceptions if not args.no_exceptions else "(disabled)",
-            "findings": [asdict(f) for f in findings],
+            "findings": [asdict(f) for f in findings],  # type: ignore
         }
         print(json.dumps(output, indent=2))
     else:
