@@ -289,9 +289,9 @@ app.patch('/prompt-versions/:id', asyncHandler(async (req, res) => {
 // ── Self-Evolution: Tool Interactions ────────────────────────────────────────
 
 app.get('/tool-interactions', asyncHandler(async (req, res) => {
-    const since = req.query.since ? new Date(req.query.since as string) : undefined;
+    const since = req.query.since ? new Date(req.query.since as string) : null;
     const interactions = await prisma.toolInteraction.findMany({
-        where: since ? { createdAt: { gte: since } } : undefined,
+        ...(since ? { where: { createdAt: { gte: since } } } : {}),
         orderBy: { createdAt: 'desc' },
         take: 100,
         include: { evaluations: true }
@@ -313,9 +313,9 @@ app.post('/tool-interactions', asyncHandler(async (req, res) => {
 // ── Self-Evolution: Tool Evaluations ─────────────────────────────────────────
 
 app.get('/tool-evaluations', asyncHandler(async (req, res) => {
-    const since = req.query.since ? new Date(req.query.since as string) : undefined;
+    const since = req.query.since ? new Date(req.query.since as string) : null;
     const evaluations = await prisma.toolEvaluation.findMany({
-        where: since ? { createdAt: { gte: since } } : undefined,
+        ...(since ? { where: { createdAt: { gte: since } } } : {}),
         orderBy: { createdAt: 'desc' },
         take: 500
     });
@@ -395,7 +395,7 @@ app.get('/evolution-stats', asyncHandler(async (req, res) => {
         if (!graderStats[ev.graderName]) {
             graderStats[ev.graderName] = { total: 0, passed: 0, avgScore: 0 };
         }
-        const g = graderStats[ev.graderName];
+        const g = graderStats[ev.graderName]!;
         g.total++;
         if (ev.passed) g.passed++;
         if (ev.score !== null) {

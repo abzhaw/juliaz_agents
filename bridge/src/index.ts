@@ -324,18 +324,22 @@ const mcpHandler = async (req: Request, res: Response) => {
     const server = new McpServer({ name: 'julia-bridge', version: '1.0.0' });
 
     // --- Aliases for server.js Compatibility ---
-    server.tool('telegram_receive', 'Fetch queued messages from the bridge.',
-        { correlationId: z.string().optional(), timeout: z.number().optional(), target: z.enum(['julia', 'openclaw']).optional() },
-        async ({ correlationId, target }) => {
+    server.tool('telegram_receive', 'Fetch queued messages from the bridge. Messages are consumed (marked as delivered) by default.',
+        { correlationId: z.string().optional(), timeout: z.number().optional(), target: z.enum(['julia', 'openclaw']).optional(), consume: z.boolean().optional().describe('Mark messages as consumed after reading (default: true)') },
+        async ({ correlationId, target, consume }) => {
             const t = target ?? 'openclaw';
+            const shouldConsume = consume ?? true;
             updateHeartbeat(t === 'julia' ? 'julia' : 'openclaw');
-            // If correlationId is provided, filter by it. Otherwise, return all relevant messages.
             const available = messages.filter((m) => {
                 const statusMatch = (t === 'julia' ? m.status === 'pending' : m.status === 'replied');
                 if (!statusMatch) return false;
                 if (correlationId && m.chatId !== correlationId) return false;
                 return true;
             });
+            if (shouldConsume && available.length > 0) {
+                available.forEach(m => { m.status = 'consumed'; });
+                await saveQueue();
+            }
             return { content: [{ type: 'text' as const, text: JSON.stringify({ messages: available }) }] };
         });
 

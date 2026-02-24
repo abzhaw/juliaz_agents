@@ -1,11 +1,20 @@
 /**
- * Julia's system prompt — her identity, purpose, and rules.
+ * Julia's system prompt — versioned and database-backed for self-evolution.
+ *
+ * On startup, loads the active prompt version from the backend DB.
+ * Falls back to the hardcoded BASELINE_PROMPT if the DB is unreachable.
+ * The optimizer can swap the active prompt at runtime without a restart.
  */
-export const SYSTEM_PROMPT = `You are Julia, an intelligent AI agent assistant.
+
+const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:3000';
+
+// ── Immutable baseline — always present as fallback ──────────────────────────
+
+const BASELINE_PROMPT = `You are Julia, an intelligent AI agent assistant.
 
 ## Who you are
-You are Julia — a personal AI agent created by Raphael. You are smart, warm, concise, and helpful. 
-You communicate via Telegram. You can hold natural conversations, answer questions, help with tasks, 
+You are Julia — a personal AI agent created by Raphael. You are smart, warm, concise, and helpful.
+You communicate via Telegram. You can hold natural conversations, answer questions, help with tasks,
 write code, do research, and assist with planning and decision-making.
 
 ## Your personality
@@ -62,7 +71,97 @@ Messages from the web dashboard arrive through the bridge with username "JuliaFr
 - Keep responses concise for Telegram (max ~300 words unless asked for more)
 - Use plain text, not heavy markdown (Telegram doesn't render headers well)
 - If you can't do something, say so clearly and suggest an alternative
-- Never make up facts — say "I don't know" or "I'd need to check that"
+- Never make up facts — say "I don't know" or "I'd need to check that"`;
 
-Today's date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-`;
+// ── Mutable active prompt state ──────────────────────────────────────────────
+
+let activePromptContent: string = BASELINE_PROMPT;
+let activeVersion: number = 0;
+
+function injectDate(prompt: string): string {
+    const today = new Date().toLocaleDateString('en-US', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+    return `${prompt}\n\nToday's date: ${today}`;
+}
+
+/** Get the current system prompt with today's date injected. */
+export function getSystemPrompt(): string {
+    return injectDate(activePromptContent);
+}
+
+/** Get the current active prompt version number. */
+export function getCurrentVersion(): number {
+    return activeVersion;
+}
+
+/** Get the baseline prompt (for identity comparison during optimization). */
+export function getBaselinePrompt(): string {
+    return BASELINE_PROMPT;
+}
+
+/**
+ * Load the active prompt version from the backend database.
+ * Falls back to BASELINE_PROMPT if the DB is unreachable or has no active version.
+ */
+export async function loadActivePrompt(): Promise<void> {
+    try {
+        const res = await fetch(`${BACKEND}/prompt-versions/active`, {
+            signal: AbortSignal.timeout(5000),
+        });
+        if (res.ok) {
+            const data = await res.json();
+            activePromptContent = data.content;
+            activeVersion = data.version;
+            console.log(`[prompt] Loaded active prompt v${activeVersion}`);
+            return;
+        }
+    } catch {
+        // DB unreachable — fall through to seeding
+    }
+
+    // No active version found — seed the baseline as v1
+    console.log('[prompt] No active prompt version found. Seeding baseline as v1...');
+    try {
+        const res = await fetch(`${BACKEND}/prompt-versions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                version: 1,
+                content: BASELINE_PROMPT,
+                isActive: true,
+                changeReason: 'Initial baseline prompt',
+            }),
+            signal: AbortSignal.timeout(5000),
+        });
+        if (res.ok) {
+            activeVersion = 1;
+            console.log('[prompt] Seeded baseline as v1');
+        }
+    } catch (err) {
+        console.warn('[prompt] Could not seed baseline to DB. Using hardcoded fallback.');
+    }
+}
+
+/**
+ * Set a new active prompt (called by the optimizer).
+ * Updates the in-memory state immediately — the next generateReply() will use it.
+ */
+export function setActivePrompt(content: string, version: number): void {
+    activePromptContent = content;
+    activeVersion = version;
+    console.log(`[prompt] Activated prompt v${version}`);
+}
+
+// ── Legacy compatibility export ──────────────────────────────────────────────
+// Some code may still import SYSTEM_PROMPT directly. Provide a getter.
+// eslint-disable-next-line @typescript-eslint/naming-convention
+export const SYSTEM_PROMPT = new Proxy({} as { toString: () => string }, {
+    get(_target, prop) {
+        if (prop === Symbol.toPrimitive || prop === 'toString' || prop === 'valueOf') {
+            return () => getSystemPrompt();
+        }
+        // For template literal usage
+        return getSystemPrompt();
+    },
+}) as unknown as string;

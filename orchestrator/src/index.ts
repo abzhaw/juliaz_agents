@@ -14,6 +14,10 @@ import { addUserMessage, addAssistantMessage, getHistory } from './memory.js';
 import { maybeCapture } from './memory-keeper.js';
 import { startLetterScheduler } from './letter-scheduler.js';
 import { startDeploy, getStatus as getDevStatus } from './dev-runner.js';
+import { loadActivePrompt, getCurrentVersion } from './prompt.js';
+import { maybeEvaluate } from './evaluator.js';
+import { startEvolutionScheduler } from './evolution-scheduler.js';
+import type { InteractionRecord } from './graders/types.js';
 
 const POLL_INTERVAL = Number(process.env.POLL_INTERVAL_MS ?? 5000);
 
@@ -101,6 +105,54 @@ async function processMessage(chatId: string, messageId: string, username: strin
         return;
     }
 
+    // ── /evolution — self-evolution status ─────────────────────────
+    if (text.trim().toLowerCase() === '/evolution') {
+        const RAPHAEL_CHAT_ID = process.env.RAPHAEL_CHAT_ID;
+        if (chatId !== RAPHAEL_CHAT_ID) {
+            await postReply(chatId, '⚠️ Not authorized.');
+            return;
+        }
+        try {
+            const statsRes = await fetch('http://localhost:3000/evolution-stats', {
+                signal: AbortSignal.timeout(5000),
+            });
+            if (!statsRes.ok) throw new Error(`HTTP ${statsRes.status}`);
+            const stats = await statsRes.json();
+
+            const activeVersion = stats.promptVersions.find((v: any) => v.isActive);
+            const graderLines = Object.entries(stats.graderStats as Record<string, any>)
+                .map(([name, g]: [string, any]) => {
+                    const passRate = g.total > 0 ? ((g.passed / g.total) * 100).toFixed(0) : 'N/A';
+                    return `  ${name}: ${passRate}% pass (${g.total} evals)`;
+                })
+                .join('\n');
+
+            const lastRun = stats.recentOptimizationRuns[0];
+            const lastRunStr = lastRun
+                ? `${lastRun.decision} (v${lastRun.fromVersion}→v${lastRun.toVersion ?? 'same'})`
+                : 'None yet';
+
+            const msg = [
+                `🧬 Self-Evolution Status`,
+                ``,
+                `Prompt: v${activeVersion?.version ?? '?'} (score: ${activeVersion?.avgScore !== null ? (activeVersion.avgScore * 100).toFixed(0) + '%' : 'N/A'})`,
+                `Total versions: ${stats.promptVersions.length}`,
+                `Total interactions evaluated: ${stats.totalInteractions}`,
+                `Total evaluations: ${stats.totalEvaluations}`,
+                ``,
+                `Grader pass rates:`,
+                graderLines || '  (no data yet)',
+                ``,
+                `Last optimization: ${lastRunStr}`,
+            ].join('\n');
+
+            await postReply(chatId, msg);
+        } catch (err: any) {
+            await postReply(chatId, `⚠️ Could not fetch evolution stats: ${err.message}`);
+        }
+        return;
+    }
+
     // ── /tasks — shortcut commands for task management ─────────────
     const trimmedLower = text.trim().toLowerCase();
     if (trimmedLower === '/tasks') {
@@ -156,11 +208,13 @@ async function processMessage(chatId: string, messageId: string, username: strin
     const history = getHistory(chatId);
     let reply: string;
     let model: string;
+    let toolCalls: import('./graders/types.js').ToolCall[] = [];
 
     try {
         const result = await generateReply(history);
         reply = result.reply;
         model = 'claude-haiku-4-5-20251001';
+        toolCalls = result.toolCalls;
         reportUsage(model, result.usage.input_tokens, result.usage.output_tokens);
     } catch (claudeErr: any) {
         log(`Claude failed (${claudeErr.message}), falling back to GPT-4o`);
@@ -168,6 +222,7 @@ async function processMessage(chatId: string, messageId: string, username: strin
             const result = await generateReplyGpt(history);
             reply = result.reply;
             model = 'gpt-4o';
+            toolCalls = result.toolCalls;
             reportUsage(model, result.usage.prompt_tokens, result.usage.completion_tokens);
         } catch (gptErr: any) {
             throw new Error(`Both Claude and GPT-4o failed. Claude: ${claudeErr.message} | GPT-4o: ${gptErr.message}`);
@@ -181,6 +236,20 @@ async function processMessage(chatId: string, messageId: string, username: strin
     await postReply(chatId, reply, messageId);
 
     log(`Reply sent to ${chatId}: "${reply.slice(0, 80)}"`);
+
+    // ── Self-evolution: evaluate tool usage (fire-and-forget, dev mode only) ──
+    if (process.env.DEV_MODE === 'true' && toolCalls.length > 0) {
+        const interaction: InteractionRecord = {
+            chatId,
+            userMessage: text,
+            conversationContext: history.slice(-6).map(m => m.content),
+            toolCalls,
+            finalReply: reply,
+            model,
+            promptVersion: getCurrentVersion(),
+        };
+        maybeEvaluate(interaction); // fire-and-forget, never awaited
+    }
 }
 
 async function poll(): Promise<void> {
@@ -228,10 +297,22 @@ async function main(): Promise<void> {
     }
 
     log(`✅ Bridge connected. Polling every ${POLL_INTERVAL}ms`);
+
+    // Load active prompt version from DB (or seed baseline)
+    await loadActivePrompt();
+
     log('Julia is ready. Waiting for messages...\n');
 
     // Start daily letter scheduler (runs independently every 30 minutes)
     startLetterScheduler();
+
+    // Start self-evolution scheduler (runs every 6 hours) — dev mode only
+    if (process.env.DEV_MODE === 'true') {
+        startEvolutionScheduler();
+        log('Self-evolution scheduler started (DEV_MODE=true)');
+    } else {
+        log('Self-evolution scheduler disabled (set DEV_MODE=true to enable)');
+    }
 
     // Start polling loop
     let consecutiveErrors = 0;

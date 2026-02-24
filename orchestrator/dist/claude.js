@@ -15,7 +15,7 @@ import { config } from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import Anthropic from '@anthropic-ai/sdk';
-import { SYSTEM_PROMPT } from './prompt.js';
+import { getSystemPrompt } from './prompt.js';
 import { TOOLS, executeTool } from './tools.js';
 // Use absolute path so .env loads correctly regardless of CWD.
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -84,16 +84,9 @@ async function callWithRetry(params) {
         ? lastError
         : new Error(`Claude API failed after ${MAX_ATTEMPTS} attempts: ${String(lastError)}`);
 }
-/**
- * Generate a reply from Claude given the full conversation history.
- * The latest user message should already be included in history.
- *
- * Runs a tool-use loop: tool calls are executed and results fed back
- * until Claude produces a final text reply. The caller sees no change —
- * the function signature is identical to the non-tool version.
- */
 export async function generateReply(history) {
     const totalUsage = { input_tokens: 0, output_tokens: 0 };
+    const collectedToolCalls = [];
     // Build a mutable message array. Tool protocol messages exist only within
     // this call's scope — the original history is never mutated.
     const messages = history.map((m) => ({
@@ -104,7 +97,7 @@ export async function generateReply(history) {
         const response = await callWithRetry({
             model: 'claude-haiku-4-5-20251001',
             max_tokens: 1024,
-            system: SYSTEM_PROMPT,
+            system: getSystemPrompt(),
             messages,
             tools: TOOLS,
             tool_choice: { type: 'auto' },
@@ -126,6 +119,12 @@ export async function generateReply(history) {
                     console.log(`[claude] Tool requested: ${block.name}(${JSON.stringify(block.input).slice(0, 200)})`);
                     const result = await executeTool(block.name, JSON.stringify(block.input));
                     console.log(`[claude] Tool result: ${result.slice(0, 200)}`);
+                    // Collect tool call data for the evaluator
+                    collectedToolCalls.push({
+                        name: block.name,
+                        args: block.input,
+                        result,
+                    });
                     toolResults.push({
                         type: 'tool_result',
                         tool_use_id: block.id,
@@ -146,7 +145,7 @@ export async function generateReply(history) {
         if (!reply) {
             throw new Error('Claude returned no text in final response');
         }
-        return { reply, usage: totalUsage };
+        return { reply, usage: totalUsage, toolCalls: collectedToolCalls };
     }
     throw new Error('Tool-use loop exceeded maximum iterations without a final reply');
 }

@@ -8,8 +8,9 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import OpenAI from 'openai';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions.js';
-import { SYSTEM_PROMPT } from './prompt.js';
+import { getSystemPrompt } from './prompt.js';
 import { OPENAI_TOOLS, executeTool } from './tools.js';
+import type { ToolCall } from './graders/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, '../.env'), override: true });
@@ -42,17 +43,24 @@ const MAX_TOOL_ITERATIONS = 5;
  * fed back until OpenAI produces a final text reply. The caller (index.ts)
  * sees no change — the function signature is identical.
  */
-export async function generateReply(history: Turn[]): Promise<{ reply: string; usage: Usage }> {
+export interface GenerateResult {
+    reply: string;
+    usage: Usage;
+    toolCalls: ToolCall[];
+}
+
+export async function generateReply(history: Turn[]): Promise<GenerateResult> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s total timeout
 
     // Accumulate token usage across all loop iterations
     const totalUsage: Usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    const collectedToolCalls: ToolCall[] = [];
 
     // Build a mutable message array. history is never mutated — tool protocol
     // messages exist only within this call's scope.
     const messages: ChatCompletionMessageParam[] = [
-        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'system', content: getSystemPrompt() },
         ...history.map((m) => ({ role: m.role, content: m.content } as ChatCompletionMessageParam)),
     ];
 
@@ -87,6 +95,11 @@ export async function generateReply(history: Turn[]): Promise<{ reply: string; u
                     const result = await executeTool(fn.name, fn.arguments);
                     console.log(`[openai] Tool result: ${result}`);
 
+                    // Collect tool call data for the evaluator
+                    let parsedArgs: Record<string, unknown> = {};
+                    try { parsedArgs = JSON.parse(fn.arguments); } catch {}
+                    collectedToolCalls.push({ name: fn.name, args: parsedArgs, result });
+
                     messages.push({
                         role: 'tool',
                         tool_call_id: toolCall.id,
@@ -105,7 +118,7 @@ export async function generateReply(history: Turn[]): Promise<{ reply: string; u
                 throw new Error('Unexpected empty response from OpenAI');
             }
 
-            return { reply, usage: totalUsage };
+            return { reply, usage: totalUsage, toolCalls: collectedToolCalls };
         }
 
         clearTimeout(timeoutId);
