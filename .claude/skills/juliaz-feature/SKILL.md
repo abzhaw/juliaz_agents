@@ -11,22 +11,22 @@ description: "Adding new features to the juliaz_agents system — new tools, API
 
 ```
 Is it a new capability Julia can use in conversations?
-  → Add a tool to orchestrator/src/tools.ts
+  → Add a tool to julia/orchestrator/src/tools.ts
 
 Is it a new way to delegate work to Claude?
-  → Add an MCP tool to cowork-mcp/src/index.ts
+  → Add an MCP tool to julia/cowork-mcp/src/index.ts
 
 Is it a new bridge operation (message routing, queue management)?
-  → Add MCP tool + REST endpoint to bridge/src/index.ts
+  → Add MCP tool + REST endpoint to julia/bridge/src/index.ts
 
 Is it persistent data storage?
-  → Add Prisma model + REST endpoints to backend/
+  → Add Prisma model + REST endpoints to julia/backend/
 
 Is it a UI feature?
-  → Add component/page to frontend/
+  → Add component/page to julia/frontend/
 
 Is it a communication channel feature?
-  → Add OpenClaw skill in openclaw/skills/
+  → Add OpenClaw skill in julia/openclaw/skills/
 
 Is it an ambient/scheduled task?
   → Create new agent (use juliaz-agent-builder skill)
@@ -34,14 +34,14 @@ Is it an ambient/scheduled task?
 
 ## Adding a Tool to the Orchestrator
 
-Tools are what Julia can call during conversations. They live in `orchestrator/src/tools.ts`.
+Tools are what Julia can call during conversations. They live in `julia/orchestrator/src/tools.ts`.
 
 ### Step 1: Define the tool
 
 Follow the existing Anthropic tool definition format:
 
 ```typescript
-// In orchestrator/src/tools.ts
+// In julia/orchestrator/src/tools.ts
 
 // Add to the tools array
 {
@@ -75,7 +75,7 @@ case "your_tool_name": {
 
 ### Step 3: Update Julia's system prompt
 
-Edit `orchestrator/src/prompt.ts` to tell Julia about the new capability. Julia needs to know WHEN to use the tool, not just that it exists.
+Edit `julia/orchestrator/src/prompt.ts` to tell Julia about the new capability. Julia needs to know WHEN to use the tool, not just that it exists.
 
 ### Step 4: Test
 
@@ -89,7 +89,7 @@ Bridge MCP tools are used by the orchestrator to interact with the message queue
 ### Pattern
 
 ```typescript
-// In bridge/src/index.ts
+// In julia/bridge/src/index.ts
 
 server.tool(
   "tool_name",
@@ -116,7 +116,7 @@ Cowork MCP wraps Claude API calls as tools. Each tool delegates a specific kind 
 ### Pattern
 
 ```typescript
-// In cowork-mcp/src/index.ts
+// In julia/cowork-mcp/src/index.ts
 
 server.tool(
   "claude_your_tool",
@@ -159,13 +159,13 @@ Cowork MCP uses tool annotations for safety:
 }
 ```
 
-After adding, rebuild and restart: `cd cowork-mcp && npm run build && pm2 restart cowork-mcp`
+After adding, rebuild and restart: `cd julia/cowork-mcp && npm run build && pm2 restart cowork-mcp`
 
 ## Adding a Backend API Endpoint
 
 ### Step 1: Add Prisma model (if new data)
 
-Edit `backend/prisma/schema.prisma`:
+Edit `julia/backend/prisma/schema.prisma`:
 
 ```prisma
 model YourModel {
@@ -177,12 +177,12 @@ model YourModel {
 
 Then migrate:
 ```bash
-cd backend && npx prisma migrate dev --name add_your_model
+cd julia/backend && npx prisma migrate dev --name add_your_model
 ```
 
 ### Step 2: Add REST endpoints
 
-In `backend/src/index.ts`, follow the existing pattern:
+In `julia/backend/src/index.ts`, follow the existing pattern:
 
 ```typescript
 // GET all
@@ -223,14 +223,14 @@ app.delete("/your-models/:id", asyncHandler(async (req, res) => {
 ### Step 3: Rebuild and restart
 
 ```bash
-cd backend && npm run build && docker compose restart
+cd julia/backend && npm run build && docker compose restart
 ```
 
 ## Adding a Frontend Page
 
 ### New Page
 
-Create `frontend/app/your-page/page.tsx`:
+Create `julia/frontend/app/your-page/page.tsx`:
 
 ```tsx
 export default function YourPage() {
@@ -245,7 +245,7 @@ export default function YourPage() {
 
 ### New Component
 
-Create in `frontend/components/YourComponent.tsx`:
+Create in `julia/frontend/components/YourComponent.tsx`:
 
 ```tsx
 "use client";
@@ -271,7 +271,7 @@ export default function YourComponent() {
 
 ### Frontend Chat Tool (if the feature needs AI interaction)
 
-Add to `frontend/app/api/chat/route.ts`:
+Add to `julia/frontend/app/api/chat/route.ts`:
 
 ```typescript
 your_tool: tool({
@@ -289,7 +289,7 @@ your_tool: tool({
 
 ## Adding an OpenClaw Skill
 
-OpenClaw skills live in `openclaw/skills/`. Each skill is a directory with:
+OpenClaw skills live in `julia/openclaw/skills/`. Each skill is a directory with:
 
 ```
 skill-name/
@@ -324,8 +324,8 @@ After creating, restart OpenClaw: `openclaw gateway start --force`
 When a feature spans multiple components (e.g., "Julia should be able to search her memories"):
 
 1. **Backend**: Add search endpoint (e.g., `GET /memories/search?q=...`)
-2. **Orchestrator**: Add tool definition in `tools.ts` that calls the endpoint
-3. **Orchestrator**: Update system prompt in `prompt.ts` to mention the capability
+2. **Orchestrator**: Add tool definition in `julia/orchestrator/src/tools.ts` that calls the endpoint
+3. **Orchestrator**: Update system prompt in `julia/orchestrator/src/prompt.ts` to mention the capability
 4. **Frontend** (optional): Add UI for the same search in the dashboard
 5. **Restart**: `pm2 restart orchestrator bridge` (and any other affected services)
 

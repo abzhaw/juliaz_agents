@@ -1,4 +1,19 @@
 {
-  "incidents": {},
-  "resolved": []
+  "_schema": "shared-findings v2 \u2014 cross-agent communication layer",
+  "_description": "All ambient agents read/write here. Health Checker writes incidents, Sentinel reads them to skip known-down services, Docs Agent reads to suppress drift for known issues, ADHD Agent aggregates for holistic status.",
+  "incidents": {
+    "openclaw": {
+      "source": "health-checker",
+      "severity": "medium",
+      "message": "DEGRADED: OpenClaw gateway \u2014 may not be running",
+      "group": "openclaw",
+      "first_seen": 1773001800,
+      "last_seen": 1773001800,
+      "count": 1,
+      "tier": "NEW"
+    }
+  },
+  "resolved": [],
+  "last_updated": "2026-03-08T21:30:03.800104",
+  "updated_by": "health-checker"
 }

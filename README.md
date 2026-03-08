@@ -1,6 +1,6 @@
-# 🏗️ Julia's Agent System — Build Workspace
+# Julia's Agent System -- Build Workspace
 
-> **You are here:** This is the workspace for **Antigravity** — the IDE agent building Julia.  
+> **You are here:** This is the workspace for **Antigravity** -- the IDE agent building Julia.
 > **Julia** is the multi-agent system being built. Antigravity (the AI in your IDE) is the one building it.
 
 ---
@@ -8,190 +8,86 @@
 ## Mental Model
 
 ```
-Antigravity  =  the builder (IDE agent — that's me, the AI in your editor)
-Julia        =  the product being built (a multi-agent platform)
-
-Together, this workspace contains both what is being built (Julia)
-and the AI assistant doing the building (Antigravity).
+Raphael (human)  -->  Antigravity (IDE agent / builder)  -->  Julia (the product being built)
 ```
+
+- **Antigravity** = the AI in the IDE (Claude Code / Cowork) that builds Julia
+- **Julia** = the multi-agent system being built
+- **OpenClaw** = communication gateway (Telegram, WhatsApp, etc.)
 
 ---
 
-## Table of Contents
+## 3-System Architecture
 
-1. [Architecture Overview](#architecture-overview)
-2. [The 7 Components](#the-7-components)
-3. [What Runs in Docker](#what-runs-in-docker)
-4. [What Stays on the Mac](#what-stays-on-the-mac)
-5. [Invocation Flow](#invocation-flow)
-6. [Backend API — The Product](#backend-api--the-product)
-7. [Directory Structure](#directory-structure)
-8. [Getting Started](#getting-started)
-9. [For AI Agents Reading This](#for-ai-agents-reading-this)
-10. [Integration Rules](#integration-rules)
+The repository is organized into three systems:
+
+```
+juliaz_agents/
+|-- julia/          USER-SYSTEM      The product users interact with
+|-- meta/           META-SYSTEM      Development, maintenance, documentation
+|-- thesis/         THESIS-SYSTEM    Master's thesis research and writing
+```
+
+### julia/ -- User-System (the product)
+
+| Component | Location | Port | Stack | Role |
+|-----------|----------|------|-------|------|
+| **Frontend** | `julia/frontend/` | 3002 | Next.js 15 + Tailwind + Framer Motion | Dashboard UI with AI chat |
+| **Bridge** | `julia/bridge/` | 3001 | Express + MCP (streamable HTTP) | Message hub connecting agents and UI |
+| **Backend** | `julia/backend/` | 3000 | Express + Prisma + PostgreSQL (Docker) | REST API for persistence |
+| **Orchestrator** | `julia/orchestrator/` | -- | Claude Haiku + GPT-4o fallback | Julia's brain, polls bridge, generates replies |
+| **Cowork MCP** | `julia/cowork-mcp/` | 3003 | MCP server wrapping Anthropic API | Claude delegation (6 tools) |
+| **OpenClaw** | `julia/openclaw/` | -- | `openclaw` CLI (npm global) | Telegram gateway |
+
+### meta/ -- Meta-System (development and maintenance)
+
+| Component | Location | Schedule | Role |
+|-----------|----------|----------|------|
+| **ADHD Agent** | `meta/agents/adhd-agent/` | every 4h (LaunchAgent) | System hygiene, structural drift detection |
+| **Health Checker** | `meta/agents/health-checker/` | every 15min (PM2 cron) | Service monitoring, auto-healing |
+| **Sentinel** | `meta/agents/security-agent/` | daily 07:00 (PM2 cron) | Security scanning, dependency auditing |
+| **Docs Agent** | `meta/agents/docs-agent/` | every 12h (PM2 cron) | Documentation drift detection |
+| **Task Manager** | `meta/agents/task-manager/` | every 6h (PM2 cron) | Task queue integrity |
+| **Architecture Agent** | `meta/agents/architecture-agent/` | every 6h (PM2 cron) | System topology scanning |
+| **Documentation** | `meta/docs/` | -- | Agent cards, system overview, guides |
+
+### thesis/ -- Thesis-System (research and academic)
+
+| Component | Location | Role |
+|-----------|----------|------|
+| **Thesis Agent** | `thesis/agents/thesis-agent/` | Academic writing partner |
+| **LaTeX source** | `thesis/latex/` | Thesis document |
+| **Research papers** | `thesis/research_papers/` | Source material |
+| **Documentation** | `thesis/documentation/` | Project logs |
 
 ---
 
-## Architecture Overview
+## What Runs Where
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         DEVELOPER (Raphael)                          │
-│              gives goals · reviews outputs · approves actions        │
-└──────────────────────────────┬───────────────────────────────────────┘
-                               │
-                               ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│              ANTIGRAVITY — IDE Agent (the builder)                   │
-│                                                                      │
-│  Lives:     Inside this IDE (not in any container)                   │
-│  Skills:    .agent/skills/  (300+ SKILL.md files)                    │
-│  Role:      Writes, debugs, configures, and ships Julia              │
-│                                                                      │
-└───────────┬──────────────────────────────────────────────────────────┘
-            │ builds and manages
-            ▼
-┌──────────────────────────────────────────────────────────────────────┐
-│                JULIA — The Multi-Agent System (the product)          │
-│                                                                      │
-│   ┌─────────────────────────────────────────────────────────────┐   │
-│   │  FRONTEND — Command Center Dashboard      [NEXT.JS]         │   │
-│   │  Location:   ./frontend/                                    │   │
-│   │  Port:       3002                                           │   │
-│   │  Stack:      Next.js 15 + Tailwind + Framer Motion          │   │
-│   └──────────────────────┬──────────────────────────────────────┘   │
-│                           │ interacts with                           │
-│   ┌──────────────────────▼──────────────────────────────────────┐   │
-│   │  BRIDGE — MCP Glue Server                                   │   │
-│   │  Location:   ./bridge/                                      │   │
-│   │  Port:       3001                                           │   │
-│   │  Role:       connects Agents ↔ UI                           │   │
-│   └──────────────────────┬──────────────────────────────────────┘   │
-│                           │ and                                      │
-│   ┌──────────────────────▼──────────────────────────────────────┐   │
-│   │  BACKEND — REST API Product           [DOCKER]              │   │
-│   │  Location:   ./backend/                                     │   │
-│   │  Port:       3000                                           │   │
-│   │  Role:       Persistence (Tasks, Logs, System State)        │   │
-│   └──────────────────────┬──────────────────────────────────────┘   │
-│                           │ updated by                               │
-│   ┌──────────────────────▼──────────────────────────────────────┐   │
-│   │  ORCHESTRATOR — Agent Intelligence                          │   │
-│   │  Location:   ./orchestrator/                                │   │
-│   │  Role:       Thinks, Polls Bridge, Writes Backend Logs      │   │
-│   └────────────────────┬────────────────────────────────────────┘   │
-│                         │ delegates tasks via MCP to                 │
-│   ┌─────────────────────▼──────────────────────────────────────┐    │
-│   │  COWORK MCP — Claude as a Multimodal Sub-Agent             │    │
-│   │  Location:   ./cowork-mcp/                                 │    │
-│   │  Port:       3003                                          │    │
-│   │  Role:       Wraps Anthropic Claude API as MCP tools       │    │
-│   │  Tools:      claude_task, claude_multimodal_task,          │    │
-│   │              claude_code_review, claude_summarize,         │    │
-│   │              claude_brainstorm, cowork_status              │    │
-│   └────────────────────────────────────────────────────────────┘    │
-└──────────────────────────────────────────────────────────────────────┘
-```
+| Component | Runtime |
+|-----------|---------|
+| Backend (PostgreSQL + API) | Docker Compose -- port 3000 |
+| Frontend, Bridge, Orchestrator, Cowork MCP | PM2 -- ports 3001-3003 |
+| Ambient agents (Sentinel, Health Checker, etc.) | PM2 cron schedules |
+| ADHD Agent | macOS LaunchAgent |
+| OpenClaw | CLI process |
+| Antigravity | IDE (Claude Code) |
 
 ---
 
-## The 10 Components
-
-| Component | What it is | Where it runs |
-|---|---|---|
-| **Frontend (`frontend/`)** | Next-Gen Next.js 15 Dashboard | MacBook — port 3002 |
-| **Bridge (`bridge/`)** | MCP glue server connecting Agents ↔ UI | MacBook — port 3001 |
-| **Backend (`backend/`)** | REST API with Postgres persistence | Docker Compose — port 3000 |
-| **Orchestrator** | Julia's primary "brain" (Loop + AI) | MacBook — PM2 always-on |
-| **OpenClaw** | Communication gateway (Telegram, etc.) | MacBook — LaunchAgent |
-| **Cowork MCP (`cowork-mcp/`)** | Claude as a multimodal sub-agent | MacBook — port 3003 |
-| **ADHD Agent (`adhd-agent/`)** | System hygiene — scans for structural drift | MacBook — LaunchAgent (4h) |
-| **Sentinel (`security-agent/`)** | Daily security scanner + self-learning | MacBook — PM2 cron (07:00) |
-| **Task Manager (`task-manager/`)** | TODO queue integrity + weekly summaries | MacBook — PM2 cron (6h) |
-| **Health Checker (`health-checker/`)** | System watchdog — monitors + auto-heals | MacBook — PM2 cron (15min) |
-
----
-
-## What Runs in Docker
-
-**Only `backend/`** — a REST API built with Express + PostgreSQL via Prisma.  
-This is the *application being built*, not the agent infrastructure.
-
-```bash
-cd backend && docker compose up -d
-# Starts:
-#   API server  → http://localhost:3000
-#   PostgreSQL  → localhost:5432
-```
-
----
-
-## What Stays on the Mac (No Docker)
-
-The agent infrastructure runs natively:
-
-- **Antigravity** — lives inside the IDE; cannot be containerized
-- **OpenClaw** — needs local CLI access, certs, and WebSocket; must run native
-- **Bridge** — ~200-line Node.js server; no reason to containerize
-
----
-
-## Invocation Flow
-
-### OpenClaw → Bridge → Orchestration (inbound message)
+## Message Flow (Telegram to Julia to Reply)
 
 ```
-Telegram user sends a message
-    └── OpenClaw gateway receives it (ws://127.0.0.1:18789)
-        └── OpenClaw uses julia-relay skill:
-            POST http://localhost:3001/incoming  { chatId, text, ... }
-                └── Bridge stores message in queue
-                    └── Orchestration reads via MCP tool: telegram_get_pending_messages
-                        └── Processes, then calls MCP tool: telegram_send_reply
-                            └── Bridge stores reply
-                                └── OpenClaw polls GET /pending-reply/:chatId
-                                    └── Delivers reply to Telegram user
+Telegram user sends message
+  --> OpenClaw gateway receives it (ws://127.0.0.1:18789)
+    --> OpenClaw POSTs to bridge: POST http://localhost:3001/incoming
+      --> Bridge stores in queue.json (state: pending)
+        --> Orchestrator polls via MCP: telegram_get_pending_messages
+          --> Orchestrator generates reply (Claude Haiku, GPT-4o fallback)
+            --> Orchestrator calls MCP: telegram_send_reply
+              --> OpenClaw polls GET /pending-reply/:chatId
+                --> OpenClaw delivers to Telegram
 ```
-
-### OpenClaw CLI Reference
-
-```bash
-# Check gateway health
-openclaw health
-
-# Start gateway
-openclaw gateway start
-
-# Send a task to OpenClaw's agent
-openclaw agent --message "Send a summary to +1234567890 on WhatsApp" --thinking high
-
-# Tail events
-openclaw logs
-```
-
----
-
-## Backend API — The Product
-
-**Location:** `./backend/`
-
-| Tech | Role |
-|---|---|
-| Node.js + Express + TypeScript | HTTP server |
-| Prisma ORM | Database access |
-| PostgreSQL 15 | Data store |
-| Docker Compose | Container orchestration |
-| Vitest | Tests |
-
-### Endpoints
-
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/health` | Health check |
-| `GET` | `/tasks` | List tasks |
-| `POST` | `/tasks` | Create task `{ title }` |
-| `PATCH` | `/tasks/:id` | Update task `{ title?, completed? }` |
-| `DELETE` | `/tasks/:id` | Delete task |
 
 ---
 
@@ -199,86 +95,41 @@ openclaw logs
 
 ```
 juliaz_agents/
-│
-├── README.md                          ← You are here
-├── .env.example                       ← All env vars reference (template)
-├── ecosystem.config.js                ← PM2 production config
-├── ecosystem.dev.config.js            ← PM2 development config
-├── start-devops.sh                    ← Start all services script
-│
-├── orchestrator/                      ← Julia's brain (GPT-4o + tool calling)
-│   ├── src/openai.ts                  ← LLM client + tool-use loop
-│   ├── src/tools.ts                   ← Tool definitions + executor
-│   ├── src/prompt.ts                  ← System prompt
-│   └── src/index.ts                   ← Entry point (bridge polling)
-│
-├── frontend/                          ← Next.js dashboard (port 3002)
-│   ├── app/api/chat/route.ts          ← Streaming chat endpoint (GPT-4o)
-│   ├── components/ChatWindow.tsx      ← Chat UI with useChat() hook
-│   └── app/page.tsx                   ← Dashboard layout
-│
-├── backend/                           ← [DOCKER] REST API (port 3000)
-│   ├── src/index.ts                   ← Express entry point
-│   ├── prisma/schema.prisma           ← DB schema
-│   └── docker-compose.yml
-│
-├── bridge/                            ← MCP bridge (port 3001)
-│   ├── src/index.ts                   ← Express + MCP server
-│   └── data/queue.json                ← Message queue (persisted)
-│
-├── cowork-mcp/                        ← Claude sub-agent (port 3003)
-│   └── src/index.ts                   ← MCP server wrapping Claude API
-│
-├── openclaw/                          ← Telegram gateway
-│   ├── SOUL.md                        ← Personality and values
-│   ├── skills/julia-relay/            ← Forwards messages to bridge
-│   └── skills/openclaw-self-manage/   ← Health check + restart
-│
-├── adhd-agent/                        ← System hygiene agent (LaunchAgent, 4h)
-│   ├── SOUL.md                        ← Core identity and rules
-│   ├── HEARTBEAT.md                   ← Schedule and triggers
-│   ├── config/                        ← LaunchAgent plist + settings
-│   └── scripts/                       ← adhd_loop.sh, scan_skills.py
-│
-├── security-agent/                    ← Sentinel security scanner (PM2 cron, 07:00)
-│   ├── SOUL.md                        ← Core identity
-│   ├── HEARTBEAT.md                   ← Schedule and escalation rules
-│   ├── scripts/daily-report.sh        ← Main scanner script
-│   ├── skills/                        ← 10 security scanning skills
-│   └── memory/                        ← Baseline, learnings, suppressed
-│
-├── task-manager/                      ← TODO queue manager (PM2 cron, 6h)
-│   ├── SOUL.md                        ← Core identity
-│   ├── HEARTBEAT.md                   ← Schedule and checks
-│   └── scripts/task_check.sh          ← Queue integrity + stale detection
-│
-├── health-checker/                    ← System watchdog (PM2 cron, 15min)
-│   ├── SOUL.md                        ← Core identity
-│   ├── HEARTBEAT.md                   ← Check targets and schedule
-│   └── scripts/health_check.sh        ← Port checks, PM2 status, auto-heal
-│
-├── openclaw/                          ← Telegram gateway (LaunchAgent)
-│   ├── SOUL.md                        ← Personality and values
-│   ├── skills/julia-relay/            ← Forwards messages to bridge
-│   └── skills/openclaw-self-manage/   ← Health check + restart
-│
-├── thesis-agent/                      ← Thesis writing agent (manual)
-│   ├── SOUL.md                        ← Academic German persona
-│   └── skills/                        ← 10 thesis skills
-│
-├── docs/                              ← Documentation
-│   ├── agent_system_overview.md       ← Full non-technical guide
-│   └── agent_cards/                   ← One-page card per agent
-│
-├── todo/                              ← Shared task queue (YAML files)
-│   ├── index.yml                      ← Task index
-│   └── TASK-NNN.yml                   ← Individual tasks
-│
-└── thesis/                            ← Master's thesis workspace
-    ├── research_papers/               ← Source PDFs
-    ├── drafts/                        ← Agent-written sections
-    ├── documentation/                 ← Protocol logs (DE + EN)
-    └── memory/                        ← Session buffer
+|-- julia/                              # USER-SYSTEM
+|   |-- frontend/                       #   Dashboard UI (port 3002)
+|   |-- backend/                        #   REST API + PostgreSQL (port 3000)
+|   |-- bridge/                         #   Message hub MCP (port 3001)
+|   |-- orchestrator/                   #   Julia's brain (Claude + GPT-4o)
+|   |-- cowork-mcp/                     #   Claude delegation server (port 3003)
+|   +-- openclaw/                       #   Telegram gateway
+|
+|-- meta/                               # META-SYSTEM
+|   |-- agents/                         #   Ambient maintenance agents
+|   |   |-- adhd-agent/                 #     System hygiene (every 4h)
+|   |   |-- health-checker/             #     Service monitoring (every 15min)
+|   |   |-- security-agent/             #     Security scanning (daily 07:00)
+|   |   |-- docs-agent/                 #     Documentation drift (every 12h)
+|   |   |-- task-manager/               #     Task queue integrity (every 6h)
+|   |   +-- architecture-agent/         #     Topology scanning (every 6h)
+|   |-- docs/                           #   System documentation + agent cards
+|   |-- logs/                           #   System logs
+|   |-- config/                         #   LaunchAgent plists
+|   +-- todo/                           #   Task tracking
+|
+|-- thesis/                             # THESIS-SYSTEM
+|   |-- agents/thesis-agent/            #   Academic writing partner
+|   |-- latex/                          #   LaTeX thesis source
+|   |-- documentation/                  #   Project logs
+|   |-- research_papers/                #   Source PDFs
+|   +-- memory/                         #   Session buffers
+|
+|-- shared-findings/                    # Cross-system communication
+|-- .claude/                            # Claude Code skills + config
+|-- CLAUDE.md                           # Project instructions
+|-- ecosystem.config.js                 # PM2 production config
+|-- ecosystem.dev.config.js             # PM2 development config
+|-- start-system.sh                     # Boot startup script (9 stages)
++-- .env.secrets                        # API keys (never commit)
 ```
 
 ---
@@ -286,31 +137,52 @@ juliaz_agents/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+, npm, Docker
-- `npm i -g openclaw`
+- Node.js 18+, npm, Docker Desktop
+- `npm i -g openclaw pm2`
 
-### 1. Start the Backend (Dockerized REST API)
-```bash
-cd backend && docker compose up -d
-```
+### Quick Start
 
-### 2. Start the Bridge (MCP glue server)
 ```bash
-cd bridge && npm run dev
-# Or for persistent background: pm2 start npm --name bridge -- run dev
-```
+# 1. Backend (Docker -- must be first)
+cd julia/backend && docker compose up -d
 
-### 3. Start OpenClaw (Communication Layer)
-```bash
-openclaw config set gateway.mode local
-openclaw onboard        # first time only
+# 2. All PM2 services
+pm2 start ecosystem.dev.config.js
+
+# 3. OpenClaw gateway
 openclaw gateway start --force
-openclaw status
-openclaw dashboard      # open the official control panel
 ```
 
-### 4. Antigravity (IDE Agent)
-Antigravity is active automatically when this workspace is open in your IDE.
+Or use the auto-start script: `./start-system.sh` (runs on macOS login via LaunchAgent).
+
+### Ports
+
+```
+3000  Backend REST API (Docker)
+3001  Bridge MCP Server
+3002  Frontend Dashboard
+3003  Cowork MCP (Claude delegation)
+18789 OpenClaw WebSocket gateway
+5432  PostgreSQL (Docker, internal)
+```
+
+---
+
+## Process Supervision
+
+All services are managed via PM2. Two configs are provided:
+
+| Config | Command | Use case |
+|--------|---------|----------|
+| `ecosystem.dev.config.js` | `pm2 start ecosystem.dev.config.js` | Development (`npm run dev`) |
+| `ecosystem.config.js` | `pm2 start ecosystem.config.js` | Production (`npm run start`) |
+
+```bash
+pm2 list          # Status of all services
+pm2 logs          # Tail all logs
+pm2 restart all   # Restart everything
+pm2 stop all      # Stop everything
+```
 
 ---
 
@@ -319,88 +191,22 @@ Antigravity is active automatically when this workspace is open in your IDE.
 ### If you are Antigravity (the IDE agent):
 - You are the **builder**. Julia is what you build.
 - Your job: write, debug, configure, and ship all Julia components.
-- For communication tasks, configure/invoke OpenClaw — don't do it yourself.
-- When something is broken, diagnose it. When something needs building, build it.
+- For communication tasks, configure/invoke OpenClaw -- don't do it yourself.
 
 ### If you are an OpenClaw sub-agent:
 - Your scope is communication and channel management only.
 - Use the `julia-relay` skill to forward messages to the bridge.
-- Do not write to `backend/` or `.agent/skills/`.
-- Your workspace is `./openclaw/`.
+- Your workspace is `julia/openclaw/`.
 
 ---
 
 ## Integration Rules
 
-1. **Bridge must be running** for OpenClaw ↔ orchestration to work (`port 3001`)
-2. **OpenClaw stays native** — must be kept running (Check: `openclaw status`)
-3. **Official Dashboard is core UI** — use `openclaw dashboard` for logs and channel control.
-4. **Backend stays in Docker** — it's isolated by design
-4. **Never commit `.env.secrets`** — it contains live API keys
-5. **Tests after every backend change**: `cd backend && npm test`
-6. **Never modify `.agent/skills/`** without explicit user instruction
+1. **Bridge must be running** for OpenClaw <-> orchestration to work (port 3001)
+2. **Backend stays in Docker** -- it's isolated by design
+3. **Never commit `.env.secrets`** -- it contains live API keys
+4. **Tests after backend changes**: `cd julia/backend && npm test`
 
 ---
 
-## Current Known Issues
-
-| Issue | Fix |
-|---|---|
-| Bridge is stopped | `cd bridge && npm run dev` |
-| Julia has no MCP tools | Add bridge to Antigravity's MCP config (`http://localhost:3001/mcp`) |
-| Cowork MCP not starting | Check `ANTHROPIC_API_KEY` is set in `.env.secrets` |
-
----
-
-## Cowork MCP Quick Start
-
-```bash
-# Build and start the Claude sub-agent server
-cd cowork-mcp && npm install && npm run build && npm start
-
-# Or via PM2 (dev):
-pm2 start ecosystem.dev.config.js --only cowork-mcp
-
-# Health check:
-curl http://localhost:3003/health
-
-# Run the example agent (requires cowork-mcp running):
-npx tsx cowork-mcp/examples/julia-calls-claude.ts
-```
-
-Connect any MCP client (orchestrator, Claude Code, etc.) to:
-- `http://localhost:3003/mcp`
-
----
-
-## Process Supervision
-
-All services are managed via [pm2](https://pm2.keymetrics.io/). Two configs are provided:
-
-| Config | Command | Use case |
-|---|---|---|
-| `ecosystem.dev.config.js` | `pm2 start ecosystem.dev.config.js` | Local development (`npm run dev`) |
-| `ecosystem.config.js` | `pm2 start ecosystem.config.js` | Production (`npm run start`) |
-
-Both configs include auto-restart with exponential backoff and a 10-restart cap.
-
-```bash
-# Install pm2 globally (one-time)
-npm install -g pm2
-
-# Start all services for development
-pm2 start ecosystem.dev.config.js
-
-# View live logs
-pm2 logs
-
-# Stop all
-pm2 stop all
-
-# View status and restart counts
-pm2 status
-```
-
----
-
-*Last updated: 2026-02-22 · Maintained by Antigravity*
+*Last updated: 2026-03-08*

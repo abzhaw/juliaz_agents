@@ -33,3 +33,28 @@
 ---
 
 <!-- Julia appends new entries here. Do not manually edit. -->
+
+### 2026-03-08 19:20 — Auto-Documentation Pipeline Complete (via cowork)
+Completed the 3-layer auto-documentation system:
+- **Layer 1** (Docs Agent): Added git-based gap detection (check 8) to docs_drift_check.sh — detects undocumented commits and alerts via Telegram
+- **Layer 2** (Git Hook): Created .git/hooks/post-commit that auto-appends commit entries to project_log.md and commit_log.md
+- **Layer 3** (Session Hook): Created thesis/scripts/log_session.sh for session-level logging, plus CLAUDE.md at project root to enforce the ritual
+- Updated thesis/MEMORY.md with auto-documentation system documentation
+- All three layers target the same project_log.md, creating a comprehensive paper trail
+
+---
+
+### 2026-03-08 19:42 — Architecture Agent Created (via cowork)
+Built Julia's 6th ambient agent: the Architecture Agent. Scans system topology every 6h, generates architectureGraph.json for the frontend neural map, detects structural changes, alerts on topology shifts. Rewrote ArchitectureDiagram.tsx for dynamic data with health indicators and agent nodes.
+
+---
+
+### 2026-03-08 21:05 — Offline Migration Guide Completed (via cowork)
+Updated OFFLINE_MIGRATION_GUIDE.md with architecture corrections (Julia-Web/Julia-Bridge/Julia-Orchestrator naming), offline communication strategy, Ollama PM2 management + health monitoring, grader/optimizer code, rollback plan (3 options), ambient agent offline mode, model warm-up, and concurrent request handling.
+
+---
+
+### 2026-03-08 21:01 — Architecture Neural Map Tooltip Coverage (via manual)
+Added tooltip descriptions to every node type on the /architecture page. Fixed SkillNode, InfraNode, and AgentNode components to show animated tooltips on hover. Expanded architectureData.json from 7 to 22 entries covering all skills, agents, and infrastructure. Added new static nodes (Frontend, Cowork-MCP, Health Checker, Security Agent, Docs Agent, PM2, Shared Findings) with proper edges. Added tooltip hover to SkillPalette sidebar items. Rebuilt and restarted frontend via PM2.
+
+---

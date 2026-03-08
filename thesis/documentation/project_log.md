@@ -671,3 +671,144 @@ Analysis of the frontend codebase revealed 0% SSR usage, 0 server components, an
 - `frontend/package.json` (dependencies: removed next, added vite/react-router/hono)
 - All route files (next/link → react-router Link)
 - `ecosystem.config.js` (frontend start command updated)
+
+---
+
+## 2026-03-08 — Ambient Agent Intelligence Overhaul (Cowork Session)
+
+### Context
+The five ambient agents (Health Checker, Sentinel, Task Manager, ADHD Agent, Docs Agent) were audited for technical quality and intelligence. The audit revealed critical gaps: the Health Checker was sending identical Telegram alerts every 15 minutes for 2+ hours without deduplication or escalation; Sentinel's reports were being duplicated when running twice on the same day; agents had no cross-communication; and no self-healing was attempted for the most common failure states.
+
+### Problem Evidence
+Health Checker logs from 18:00–20:00 showed 8 consecutive identical alerts for the same 3 issues (Backend API down, PM2 `backend-docker` in `waiting restart`, OpenClaw degraded). Each alert was word-for-word identical — no escalation, no deduplication, no self-healing attempted.
+
+### What was done
+
+**Health Checker (`health-checker/scripts/health_check.sh`) — Complete Rewrite**
+- **Alert deduplication**: Issues are fingerprinted and tracked in `memory/alert_state.json`. Identical issues are not re-alerted.
+- **Escalation tiers**: NEW (1st detection) → PERSISTENT (3× / ~45min) → CRITICAL (6× / ~1.5h) → SILENT (12× / ~3h, daily digest only). Each tier change triggers one notification.
+- **Issue correlation**: Multiple failures in the same service group (e.g., `backend-docker` waiting restart + Backend API HTTP 000) are merged into one correlated `[BACKEND]` incident instead of two separate alerts.
+- **`waiting restart` handling**: Now a recognized PM2 state. If restarts < 5, lets PM2 retry. If ≥ 5 (stuck), force-deletes and recreates the process from `ecosystem.config.js`.
+- **Self-healing upgrades**: Attempts `pm2 restart` for errored processes (threshold: < 15 restarts), attempts `docker compose up -d` for dead containers, verifies restart success with a 3-second probe.
+- **Recovery detection**: When a previously-escalated issue resolves, sends a "✅ RESOLVED" Telegram notification.
+- **Cross-agent communication**: Writes active incidents to `shared-findings/incidents.json` so Sentinel and Docs Agent know what's currently broken.
+
+**Sentinel (`security-agent/scripts/daily-report.sh`) — Bug Fix + Intelligence**
+- **Duplicate report bug fixed**: Report is now built in a temp file and atomically moved (`mv`) to the final path. Running twice on the same day (boot + cron) overwrites cleanly instead of appending.
+- **Known-safe port registry** (`memory/known_safe.json`): macOS system ports (5000/ControlCenter, 7000/AirPlay, 49152/rapportd) pre-classified as safe. No more false positives flagged daily.
+- **Known-safe file filtering**: `playwright-skill/lib/helpers.js` (contains test password patterns) suppressed from credential scan.
+- **Incident awareness**: Reads `shared-findings/incidents.json`. If Health Checker already tracks a service as down, Sentinel marks the port as "known incident" instead of creating a separate finding.
+- **Day-over-day diff**: Compares today's findings against yesterday's report. Telegram message highlights `🆕 New` findings separately from recurring ones.
+- **Real self-learning**: `baseline.json` now stores 30 days of trend data (not just a counter). Report shows whether findings are "improving," "degrading," or "stable."
+- **Learnings journal dedup**: Only one entry per day (fixed: previously had 2–6 duplicate entries per date).
+
+**Docs Agent (`docs-agent/scripts/docs_drift_check.sh`) — Intelligence Upgrade**
+- **Incident awareness**: Reads `shared-findings/incidents.json`. Skips drift checks for services that Health Checker is already tracking as active incidents.
+- **Drift memory** (`memory/drift_state.json`): Tracks previously reported drift. Only alerts on NEW drift, stays silent for known issues.
+- **New checks added**: Verifies PM2 process count matches `ecosystem.config.js`; validates cron schedules match documentation.
+- **Cross-agent data sharing**: Writes docs-drift count and status to `shared-findings/incidents.json`.
+
+**Shared Findings Layer (`shared-findings/incidents.json`) — Activated**
+- Previously empty and unused by all agents.
+- Now serves as the cross-agent communication backbone: Health Checker writes active incidents, Sentinel reads them to skip known-down services, Docs Agent reads them to suppress irrelevant drift.
+- Schema: `incidents` (active), `resolved` (last 50), `docs_drift` (from Docs Agent), `last_updated`, `updated_by`.
+
+### Key decisions
+- **Escalation state machine over threshold checks**: The escalation tiers (NEW → PERSISTENT → CRITICAL → SILENT) are tracked per-issue in a JSON state file, not computed from raw counts. This allows the system to reset escalation when an issue resolves and comes back.
+- **Correlation groups**: Each check assigns a `group` label (e.g., "backend", "bridge"). Multiple failures in the same group are merged into one incident for alerting. This prevents Raphael from receiving 3 separate alerts for what is one root cause.
+- **Atomic writes for Sentinel**: The duplicate report bug was caused by `>>` (append) to a file that was initialized with `>` (overwrite) only once. Solution: write to temp, `mv` at end. This is idempotent regardless of how many times the script runs.
+- **Known-safe registries are editable JSON files**: Both `known_safe.json` (Sentinel) and `exceptions.json` (ADHD Agent) follow the same pattern — human-editable JSON that suppresses false positives. Sentinel can now learn to stop flagging things.
+- **Shared findings as a coordination bus**: Rather than having agents directly call each other, the `shared-findings/incidents.json` file acts as an asynchronous message board. Any agent can write, any agent can read. No coupling between agent schedules.
+
+### Files rewritten
+- `health-checker/scripts/health_check.sh` (complete rewrite — dedup, escalation, correlation, self-healing)
+- `security-agent/scripts/daily-report.sh` (atomic write, known-safe filtering, incident awareness, trend tracking)
+- `docs-agent/scripts/docs_drift_check.sh` (incident awareness, drift memory, new checks)
+
+### Files created
+- `security-agent/memory/known_safe.json` (known-safe ports and files registry — created on first run)
+- `docs-agent/memory/drift_state.json` (drift memory — created on first run)
+- `health-checker/memory/alert_state.json` (escalation state — created on first run)
+
+### Files updated
+- `shared-findings/incidents.json` (schema upgraded, now actively used by 3 agents)
+
+---
+
+## 2026-03-08 — Auto-Documentation Pipeline Complete
+
+> Auto-logged by cowork session at 19:20
+
+Completed the 3-layer auto-documentation system:
+- **Layer 1** (Docs Agent): Added git-based gap detection (check 8) to docs_drift_check.sh — detects undocumented commits and alerts via Telegram
+- **Layer 2** (Git Hook): Created .git/hooks/post-commit that auto-appends commit entries to project_log.md and commit_log.md
+- **Layer 3** (Session Hook): Created thesis/scripts/log_session.sh for session-level logging, plus CLAUDE.md at project root to enforce the ritual
+- Updated thesis/MEMORY.md with auto-documentation system documentation
+- All three layers target the same project_log.md, creating a comprehensive paper trail
+
+---
+
+## 2026-03-08 — Architecture Agent Created
+
+> Auto-logged by cowork session at 19:42
+
+Built the Architecture Agent — Julia's 6th ambient agent. This agent scans the actual running system (PM2, Docker, ports, agent dirs, skills) every 6 hours and generates `architectureGraph.json`, which powers the frontend's interactive neural map at `/architecture`.
+
+### What it does
+1. **Ground-truth scanner**: Collects PM2 processes, Docker containers, listening ports, agent directories, skill folders, OpenClaw status
+2. **Graph generator**: Produces full node+edge topology JSON for the ReactFlow frontend
+3. **Change detector**: Diffs against previous scan — flags new/removed nodes, health transitions
+4. **Telegram alerter**: Sends structural change notifications (silent when stable)
+5. **Cross-agent writer**: Writes topology metadata to shared-findings for other agents
+
+### Frontend changes
+- Rewrote `ArchitectureDiagram.tsx` to consume dynamic `architectureGraph.json` instead of hardcoded nodes
+- Added 3 new node types: AgentNode (emerald), InfraNode (amber), HealthDot (live health indicators)
+- Added MetadataOverlay showing live topology stats (process count, agent count, scan timestamp)
+- Falls back to static layout if no graph file exists (backward compatible)
+- Updated legend with new node categories
+
+### Files created
+- `architecture-agent/scripts/architecture_scan.sh` — main scanner
+- `architecture-agent/SOUL.md`, `IDENTITY.md`, `HEARTBEAT.md` — identity files
+- `docs/agent_cards/architecture_agent.md` — agent card
+
+### Files modified
+- `ecosystem.config.js` — added architecture-agent (10 apps total)
+- `frontend/src/components/ArchitectureDiagram.tsx` — dynamic graph + new node types
+- `docs/agent_system_overview.md` — added Architecture Agent section + updated to Update 6
+
+---
+
+## 2026-03-08 — Offline Migration Guide Completed
+
+> Auto-logged by cowork session at 21:05
+
+Updated `docs/OFFLINE_MIGRATION_GUIDE.md` from 612 lines to 1017 lines, filling in all identified gaps:
+
+### Architecture corrections applied
+- Fixed component naming: Julia-Web, Julia-Orchestrator, Julia-Bridge (not "openclaw-bridge")
+- Clarified Julia-Web has its own AI brain (GPT-4o / Claude Sonnet via streamText)
+- Clarified Julia-Bridge connects BOTH Julia-Web and OpenClaw (not OpenClaw-specific)
+- Clarified "Julia-Telegram" is a user experience, not a component
+
+### New sections added
+- **System Architecture** diagram with correct naming and component table
+- **Offline Communication Strategy** — Julia-Web becomes sole interface, OFFLINE_MODE env var, message outbox queuing
+- **Step 5: Grader + optimizer rewire** — full before/after code for holistic-strategy.ts, result-integration.ts, optimizer.ts
+- **Step 9: Ollama PM2 management** — ecosystem.config.js entry + health checker monitoring
+- **Step 10: Model warm-up** — VRAM loading on boot, OLLAMA_KEEP_ALIVE setting
+- **Rollback Plan** — three options (hybrid cloud fallback, per-component migration, full rollback)
+- **Ambient Agents in Offline Mode** — local alert sink pattern, Telegram fallback
+- **Known Risks** expanded — cold start, concurrent requests, model eviction
+
+### Files modified
+- `docs/OFFLINE_MIGRATION_GUIDE.md` — comprehensive update
+
+---
+
+## 2026-03-08 — Architecture Neural Map Tooltip Coverage
+
+> Auto-logged by manual session at 21:01
+
+Added tooltip descriptions to every node type on the /architecture page. Fixed SkillNode, InfraNode, and AgentNode components to show animated tooltips on hover. Expanded architectureData.json from 7 to 22 entries covering all skills, agents, and infrastructure. Added new static nodes (Frontend, Cowork-MCP, Health Checker, Security Agent, Docs Agent, PM2, Shared Findings) with proper edges. Added tooltip hover to SkillPalette sidebar items. Rebuilt and restarted frontend via PM2.

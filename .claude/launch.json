@@ -5,35 +5,35 @@
       "name": "frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "frontend",
+      "cwd": "julia/frontend",
       "port": 3002
     },
     {
       "name": "bridge",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "bridge",
+      "cwd": "julia/bridge",
       "port": 3001
     },
     {
       "name": "backend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "backend",
+      "cwd": "julia/backend",
       "port": 3000
     },
     {
       "name": "orchestrator",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "orchestrator",
+      "cwd": "julia/orchestrator",
       "port": 3004
     },
     {
       "name": "cowork-mcp",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "cowork-mcp",
+      "cwd": "julia/cowork-mcp",
       "port": 3003
     }
   ]

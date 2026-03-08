@@ -72,6 +72,6 @@ Test the exact failure case that motivated the change:
 
 | Agent | Prompt | Tools | Executor |
 |-------|--------|-------|----------|
-| Orchestrator Julia | `orchestrator/src/prompt.ts` | `orchestrator/src/tools.ts` | `orchestrator/src/tools.ts:executeTool()` |
-| Frontend Julia | `frontend/server.ts` (SYSTEM_PROMPT const) | `frontend/server.ts` (chatTools object) | Inline in tool definitions |
-| OpenClaw | `openclaw/SOUL.md` + skill files | OpenClaw CLI built-in + skills | Skill scripts |
+| Orchestrator Julia | `julia/orchestrator/src/prompt.ts` | `julia/orchestrator/src/tools.ts` | `julia/orchestrator/src/tools.ts:executeTool()` |
+| Frontend Julia | `julia/frontend/server.ts` (SYSTEM_PROMPT const) | `julia/frontend/server.ts` (chatTools object) | Inline in tool definitions |
+| OpenClaw | `julia/openclaw/SOUL.md` + skill files | OpenClaw CLI built-in + skills | Skill scripts |

@@ -77,9 +77,9 @@ OpenClaw is a protocol gateway: translates between Telegram's API and the bridge
 
 | File | Architectural Role |
 |------|-------------------|
-| `bridge/src/index.ts` | Message hub — all routing flows through here |
-| `orchestrator/src/index.ts` | Main poll loop — the heartbeat of the system |
-| `orchestrator/src/tools.ts` | Tool registry — what the brain can do |
-| `orchestrator/src/prompt.ts` | Brain identity — what the brain knows |
-| `frontend/server.ts` | Web interface — conversation + action delegation |
-| `openclaw/skills/julia-relay/SKILL.md` | Gateway relay — Telegram ↔ bridge |
+| `julia/bridge/src/index.ts` | Message hub — all routing flows through here |
+| `julia/orchestrator/src/index.ts` | Main poll loop — the heartbeat of the system |
+| `julia/orchestrator/src/tools.ts` | Tool registry — what the brain can do |
+| `julia/orchestrator/src/prompt.ts` | Brain identity — what the brain knows |
+| `julia/frontend/server.ts` | Web interface — conversation + action delegation |
+| `julia/openclaw/skills/julia-relay/SKILL.md` | Gateway relay — Telegram ↔ bridge |

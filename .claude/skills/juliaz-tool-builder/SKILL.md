@@ -13,8 +13,8 @@ description: "Expert guidance for designing and implementing tools for Julia's a
 
 ## Use this skill when
 
-- Adding a new tool to the orchestrator (`orchestrator/src/tools.ts`)
-- Adding a new tool to the frontend (`frontend/server.ts` chatTools)
+- Adding a new tool to the orchestrator (`julia/orchestrator/src/tools.ts`)
+- Adding a new tool to the frontend (`julia/frontend/server.ts` chatTools)
 - Fixing a tool that agents misuse or ignore
 - Designing tool schemas for any agent in the system
 
@@ -80,7 +80,7 @@ Two tools with similar descriptions → agent picks randomly. Make descriptions 
 
 ## juliaz Tool Implementation Patterns
 
-### Orchestrator Tools (`orchestrator/src/tools.ts`)
+### Orchestrator Tools (`julia/orchestrator/src/tools.ts`)
 
 Tools are defined in two formats (Anthropic + OpenAI) from a single source:
 
@@ -104,7 +104,7 @@ export async function executeTool(name: string, rawArgs: string): Promise<string
 }
 ```
 
-### Frontend Tools (`frontend/server.ts`)
+### Frontend Tools (`julia/frontend/server.ts`)
 
 Uses Vercel AI SDK `tool()` helper with Zod schemas:
 
@@ -136,7 +136,7 @@ try {
 
 | Location | Format | Used by |
 |----------|--------|---------|
-| `orchestrator/src/tools.ts` | Anthropic `Tool[]` + OpenAI auto-convert | Claude Haiku + GPT-4o fallback |
-| `frontend/server.ts` | Vercel AI SDK `tool()` + Zod | GPT-4o / Claude Sonnet |
-| `bridge/src/index.ts` | MCP `server.tool()` | MCP clients (orchestrator, OpenClaw) |
-| `cowork-mcp/src/index.ts` | MCP `server.tool()` | Claude delegation |
+| `julia/orchestrator/src/tools.ts` | Anthropic `Tool[]` + OpenAI auto-convert | Claude Haiku + GPT-4o fallback |
+| `julia/frontend/server.ts` | Vercel AI SDK `tool()` + Zod | GPT-4o / Claude Sonnet |
+| `julia/bridge/src/index.ts` | MCP `server.tool()` | MCP clients (orchestrator, OpenClaw) |
+| `julia/cowork-mcp/src/index.ts` | MCP `server.tool()` | Claude delegation |

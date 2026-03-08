@@ -1,0 +1,13 @@
+{
+  "openclaw": {
+    "fingerprint": "openclaw",
+    "severity": "medium",
+    "group": "openclaw",
+    "message": "DEGRADED: OpenClaw gateway \u2014 may not be running",
+    "count": 1,
+    "first_seen": 1773001800,
+    "last_seen": 1773001800,
+    "tier": "NEW",
+    "last_alert_epoch": 1773001800
+  }
+}

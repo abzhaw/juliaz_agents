@@ -11,7 +11,7 @@ description: "Service management, process supervision, and operational tasks for
 
 | Service | Manager | Port | Start Command | Health Check |
 |---------|---------|------|---------------|-------------|
-| Backend API | Docker Compose | 3000 | `cd backend && docker compose up -d` | `curl http://localhost:3000/health` |
+| Backend API | Docker Compose | 3000 | `cd julia/backend && docker compose up -d` | `curl http://localhost:3000/health` |
 | Bridge | PM2 | 3001 | `pm2 start ecosystem.dev.config.js --only bridge` | `curl http://localhost:3001/health` |
 | Frontend | PM2 | 3002 | `pm2 start ecosystem.dev.config.js --only frontend` | `curl http://localhost:3002` |
 | Cowork MCP | PM2 | 3003 | `pm2 start ecosystem.dev.config.js --only cowork-mcp` | `curl http://localhost:3003/health` |
@@ -22,7 +22,7 @@ description: "Service management, process supervision, and operational tasks for
 
 ```bash
 # 1. Backend (Docker — must be first, other services depend on DB)
-cd backend && docker compose up -d
+cd julia/backend && docker compose up -d
 
 # 2. All PM2 services (bridge, frontend, cowork-mcp, orchestrator)
 pm2 start ecosystem.dev.config.js
@@ -40,7 +40,7 @@ Or use the convenience script:
 
 ```bash
 pm2 stop all
-cd backend && docker compose down
+cd julia/backend && docker compose down
 openclaw gateway stop  # if applicable
 ```
 
@@ -94,13 +94,13 @@ cd backend && docker compose up -d
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 # View logs
-docker compose -f backend/docker-compose.yml logs -f
+docker compose -f julia/backend/docker-compose.yml logs -f
 
 # Rebuild after schema changes
-cd backend && docker compose down && docker compose up -d --build
+cd julia/backend && docker compose down && docker compose up -d --build
 
 # Reset database (destructive!)
-cd backend && docker compose down -v && docker compose up -d
+cd julia/backend && docker compose down -v && docker compose up -d
 # Then: npx prisma migrate deploy (or npx prisma db push)
 ```
 
@@ -157,30 +157,30 @@ echo "=== OpenClaw ===" && openclaw health 2>&1
 | "EADDRINUSE" on startup | Port already in use | `lsof -i :<port>` then `kill <PID>` |
 | Orchestrator not replying | Bridge is down, or API key expired | Check bridge health first, then check `.env.secrets` |
 | Cowork MCP 500 errors | Missing ANTHROPIC_API_KEY | Verify `.env.secrets` has valid key |
-| Docker containers gone | Docker Desktop restarted | `cd backend && docker compose up -d` |
+| Docker containers gone | Docker Desktop restarted | `cd julia/backend && docker compose up -d` |
 | OpenClaw can't connect | Gateway not started | `openclaw gateway start --force` |
-| Frontend build fails | Missing deps or TS errors | `cd frontend && npm install && npx next build` |
+| Frontend build fails | Missing deps or TS errors | `cd julia/frontend && npm install && npx next build` |
 | PM2 shows "errored" | Check logs | `pm2 logs <service-name> --lines 50` |
-| Database connection refused | PostgreSQL container down | `docker compose -f backend/docker-compose.yml up -d` |
+| Database connection refused | PostgreSQL container down | `docker compose -f julia/backend/docker-compose.yml up -d` |
 | Rate limit errors (429) | Too many API calls | Orchestrator has built-in backoff; wait or increase `POLL_INTERVAL_MS` |
 
 ## Build Commands
 
 ```bash
 # Backend
-cd backend && npm run build
+cd julia/backend && npm run build
 
 # Bridge
-cd bridge && npm run build
+cd julia/bridge && npm run build
 
 # Frontend
-cd frontend && npx next build
+cd julia/frontend && npx next build
 
 # Cowork MCP
-cd cowork-mcp && npm run build
+cd julia/cowork-mcp && npm run build
 
 # Orchestrator
-cd orchestrator && npm run build
+cd julia/orchestrator && npm run build
 
 # TypeScript check (all)
 npx tsc --noEmit  # from each service directory
@@ -190,10 +190,10 @@ npx tsc --noEmit  # from each service directory
 
 ```bash
 # Backend (only component with tests configured)
-cd backend && npm test
+cd julia/backend && npm test
 
 # Frontend lint
-cd frontend && npx next lint
+cd julia/frontend && npx next lint
 ```
 
 ## Logs Location

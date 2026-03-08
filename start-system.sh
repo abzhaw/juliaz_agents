@@ -47,7 +47,7 @@ done
 
 if docker info &>/dev/null; then
     echo "[1/9] Docker ready. Starting backend..."
-    cd "$PROJECT_DIR/backend"
+    cd "$PROJECT_DIR/julia/backend"
     docker compose up -d
     DOCKER_OK=true
     echo "[1/9] Backend (Docker) started."
@@ -94,7 +94,7 @@ mkdir -p "$LAUNCHAGENT_DIR"
 
 # ADHD Agent — runs every 4 hours
 ADHD_PLIST="com.juliaz.adhd-agent.plist"
-ADHD_SRC="$PROJECT_DIR/adhd-agent/config/$ADHD_PLIST"
+ADHD_SRC="$PROJECT_DIR/meta/agents/adhd-agent/config/$ADHD_PLIST"
 if [ -f "$ADHD_SRC" ]; then
     # Unload old version if exists (ignore errors)
     launchctl unload "$LAUNCHAGENT_DIR/$ADHD_PLIST" 2>/dev/null || true
@@ -107,7 +107,7 @@ fi
 
 # Start-System — ensures this very script runs on every login
 SYSTEM_PLIST="com.juliaz.start-system.plist"
-SYSTEM_SRC="$PROJECT_DIR/config/$SYSTEM_PLIST"
+SYSTEM_SRC="$PROJECT_DIR/meta/config/$SYSTEM_PLIST"
 if [ -f "$SYSTEM_SRC" ]; then
     if ! launchctl list 2>/dev/null | grep -q "com.juliaz.start-system"; then
         cp "$SYSTEM_SRC" "$LAUNCHAGENT_DIR/$SYSTEM_PLIST"
@@ -122,12 +122,12 @@ fi
 
 # ── 5. Run Sentinel security scan on boot ────────────────────────────────────
 echo "[5/9] Running Sentinel boot security scan..."
-SENTINEL_SCRIPT="$PROJECT_DIR/security-agent/scripts/daily-report.sh"
+SENTINEL_SCRIPT="$PROJECT_DIR/meta/agents/security-agent/scripts/daily-report.sh"
 if [ -x "$SENTINEL_SCRIPT" ]; then
     # Run in background so it doesn't block Chrome opening
     bash "$SENTINEL_SCRIPT" &
     SENTINEL_PID=$!
-    echo "[5/9] Sentinel scan started (PID $SENTINEL_PID) — report will be in security-agent/reports/"
+    echo "[5/9] Sentinel scan started (PID $SENTINEL_PID) — report will be in meta/agents/security-agent/reports/"
 else
     echo "[5/9] Sentinel script not found or not executable — skipping boot scan"
 fi
@@ -145,7 +145,7 @@ fi
 echo "[7/9] Running initial health check (60s delay for services to warm up)..."
 (
     sleep 60
-    HEALTH_SCRIPT="$PROJECT_DIR/health-checker/scripts/health_check.sh"
+    HEALTH_SCRIPT="$PROJECT_DIR/meta/agents/health-checker/scripts/health_check.sh"
     if [ -x "$HEALTH_SCRIPT" ]; then
         bash "$HEALTH_SCRIPT"
     fi

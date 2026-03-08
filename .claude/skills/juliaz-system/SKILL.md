@@ -17,26 +17,45 @@ Raphael (human) → Antigravity (IDE agent / builder) → Julia (the product bei
 - **Julia** = the multi-agent system being built
 - **OpenClaw** = communication gateway (Telegram, WhatsApp, etc.)
 
-## The 7 Components
+## 3-System Architecture
+
+### `julia/` — User-System (the product)
 
 | Component | Location | Port | Stack | Role |
 |-----------|----------|------|-------|------|
-| **Frontend** | `./frontend/` | 3002 | Next.js 15 + Tailwind + Framer Motion | Dashboard UI with its own AI chat (GPT-4o via Vercel AI SDK) |
-| **Bridge** | `./bridge/` | 3001 | Express + MCP (streamable HTTP) | Message hub connecting agents ↔ UI. Queue stored in `data/queue.json` |
-| **Backend** | `./backend/` | 3000 | Express + Prisma + PostgreSQL (Docker) | REST API for persistence: tasks, memories, letters, logs, usage, updates |
-| **Orchestrator** | `./orchestrator/` | — | Claude Haiku (primary) + GPT-4o (fallback) | Julia's brain. Polls bridge every 5s, generates replies, manages memory |
-| **Cowork MCP** | `./cowork-mcp/` | 3003 | MCP server wrapping Anthropic API | Claude delegation: 6 tools (claude_task, multimodal, code_review, summarize, brainstorm, status) |
-| **OpenClaw** | `./openclaw/` | — | `openclaw` CLI (npm global) | Telegram gateway. Forwards messages to bridge via `julia-relay` skill |
-| **ADHD Agent** | `./adhd-agent/` | — | macOS LaunchAgent (every 4h) | System hygiene: scans for duplicate skills, dead agents, orphaned configs |
+| **Frontend** | `julia/frontend/` | 3002 | Next.js 15 + Tailwind + Framer Motion | Dashboard UI with its own AI chat (GPT-4o via Vercel AI SDK) |
+| **Bridge** | `julia/bridge/` | 3001 | Express + MCP (streamable HTTP) | Message hub connecting agents ↔ UI. Queue stored in `data/queue.json` |
+| **Backend** | `julia/backend/` | 3000 | Express + Prisma + PostgreSQL (Docker) | REST API for persistence: tasks, memories, letters, logs, usage, updates |
+| **Orchestrator** | `julia/orchestrator/` | — | Claude Haiku (primary) + GPT-4o (fallback) | Julia's brain. Polls bridge every 5s, generates replies, manages memory |
+| **Cowork MCP** | `julia/cowork-mcp/` | 3003 | MCP server wrapping Anthropic API | Claude delegation: 6 tools (claude_task, multimodal, code_review, summarize, brainstorm, status) |
+| **OpenClaw** | `julia/openclaw/` | — | `openclaw` CLI (npm global) | Telegram gateway. Forwards messages to bridge via `julia-relay` skill |
 
-### Supporting Directories
+### `meta/` — Meta-System (development & maintenance)
+
+| Component | Location | Schedule | Role |
+|-----------|----------|----------|------|
+| **ADHD Agent** | `meta/agents/adhd-agent/` | every 4h (LaunchAgent) | System hygiene: scans for duplicate skills, dead agents, orphaned configs |
+| **Health Checker** | `meta/agents/health-checker/` | every 15min | Service monitoring, self-healing, escalation tiers |
+| **Security Agent** | `meta/agents/security-agent/` | daily 07:00 | Security scanning: ports, credentials, dependencies, Docker |
+| **Docs Agent** | `meta/agents/docs-agent/` | every 12h | Documentation drift detection |
+| **Task Manager** | `meta/agents/task-manager/` | every 6h | Task queue integrity, stale task detection |
+| **Architecture Agent** | `meta/agents/architecture-agent/` | every 6h | System topology scanning, neural map generation |
+
+### `thesis/` — Thesis-System (research & academic)
 
 | Directory | Purpose |
 |-----------|---------|
-| `./julia_medium_agent/` | Ambient research agent tracking Medium articles |
-| `./thesis/` | Master's thesis workspace (research papers, drafts, documentation, memory) |
-| `./docs/` | System documentation, agent cards, planning prompts |
-| `./.superpowers/` | Feature release notes and README |
+| `thesis/agents/thesis-agent/` | Academic writing partner (reads system, writes thesis) |
+| `thesis/latex/` | LaTeX thesis source |
+| `thesis/documentation/` | Project logs |
+
+### Cross-system & config (root level)
+
+| Directory | Purpose |
+|-----------|---------|
+| `shared-findings/` | Cross-agent communication backbone |
+| `meta/docs/` | System documentation, agent cards, planning prompts |
+| `.superpowers/` | Development framework (brainstorming, TDD, plans) |
 
 ## Message Flow (Telegram → Julia → Reply)
 
@@ -95,35 +114,37 @@ When Raphael asks "where is X", use this:
 
 | Looking for... | File(s) |
 |----------------|---------|
-| Julia's personality/prompt | `orchestrator/src/prompt.ts` |
-| Tool definitions (orchestrator) | `orchestrator/src/tools.ts` |
-| Claude API client | `orchestrator/src/claude.ts` |
-| GPT-4o fallback client | `orchestrator/src/openai.ts` |
-| Main polling loop | `orchestrator/src/index.ts` |
-| Memory extraction logic | `orchestrator/src/memory-keeper.ts` |
-| Letter generation | `orchestrator/src/letter-scheduler.ts` + `orchestrator/src/lob.ts` |
-| Bridge MCP tools | `bridge/src/index.ts` |
-| Bridge message queue | `bridge/data/queue.json` |
-| Cowork MCP tools | `cowork-mcp/src/index.ts` |
-| Frontend chat endpoint | `frontend/app/api/chat/route.ts` |
-| Dashboard page | `frontend/app/page.tsx` |
-| DevOps API route | `frontend/app/api/devops/route.ts` |
-| Backend REST API | `backend/src/index.ts` |
-| Database schema | `backend/prisma/schema.prisma` |
-| Docker setup | `backend/docker-compose.yml` |
+| Julia's personality/prompt | `julia/orchestrator/src/prompt.ts` |
+| Tool definitions (orchestrator) | `julia/orchestrator/src/tools.ts` |
+| Claude API client | `julia/orchestrator/src/claude.ts` |
+| GPT-4o fallback client | `julia/orchestrator/src/openai.ts` |
+| Main polling loop | `julia/orchestrator/src/index.ts` |
+| Memory extraction logic | `julia/orchestrator/src/memory-keeper.ts` |
+| Letter generation | `julia/orchestrator/src/letter-scheduler.ts` + `julia/orchestrator/src/lob.ts` |
+| Bridge MCP tools | `julia/bridge/src/index.ts` |
+| Bridge message queue | `julia/bridge/data/queue.json` |
+| Cowork MCP tools | `julia/cowork-mcp/src/index.ts` |
+| Frontend chat endpoint | `julia/frontend/app/api/chat/route.ts` |
+| Dashboard page | `julia/frontend/app/page.tsx` |
+| DevOps API route | `julia/frontend/app/api/devops/route.ts` |
+| Backend REST API | `julia/backend/src/index.ts` |
+| Database schema | `julia/backend/prisma/schema.prisma` |
+| Docker setup | `julia/backend/docker-compose.yml` |
 | PM2 configs | `ecosystem.config.js`, `ecosystem.dev.config.js` |
-| OpenClaw relay skill | `openclaw/skills/julia-relay/` |
-| OpenClaw troubleshooting | `openclaw/skills/openclaw-troubleshoot/` |
-| System overview (non-technical) | `docs/agent_system_overview.md` |
-| Agent cards | `docs/agent_cards/` |
+| OpenClaw relay skill | `julia/openclaw/skills/julia-relay/` |
+| OpenClaw troubleshooting | `julia/openclaw/skills/openclaw-troubleshoot/` |
+| System overview (non-technical) | `meta/docs/agent_system_overview.md` |
+| Agent cards | `meta/docs/agent_cards/` |
+| Ambient agents | `meta/agents/` |
 | Thesis research | `thesis/research_papers/` |
 | Thesis drafts | `thesis/drafts/` |
+| Thesis agent | `thesis/agents/thesis-agent/` |
 
 ## Known Pain Points
 
 These are real issues in the codebase — reference them when relevant:
 
-1. **Hardcoded Mac paths** in orchestrator tools (email skill path: `/Users/raphael/Documents/Devs/juliaz_agents/openclaw/skills/email-aberer`)
+1. ~~**Hardcoded Mac paths** in orchestrator tools~~ (FIXED: now uses `/Users/raphael/juliaz_agents/julia/openclaw/skills/email-aberer`)
 2. **Tool definition duplication** between orchestrator and frontend (both define similar tools separately)
 3. **No pagination** on any backend GET endpoint (returns entire table)
 4. **Bridge queue grows unbounded** — no pruning of old replied messages

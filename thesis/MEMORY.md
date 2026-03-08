@@ -2,7 +2,7 @@
 
 **Status**: Active Sub-Agent  
 **Role**: Master Thesis Research & Writing Assistant  
-**Last Update**: 2026-02-21  
+**Last Update**: 2026-03-08
 
 ---
 
@@ -56,6 +56,20 @@ I do NOT:
 
 ---
 
+## Auto-Documentation System (as of 2026-03-08)
+
+The project_log.md is now maintained by a 3-layer auto-documentation pipeline:
+
+| Layer | Mechanism | Frequency |
+|-------|-----------|-----------|
+| 1 | Docs Agent checks git for undocumented commits | Every 12 hours |
+| 2 | Git post-commit hook appends commit entries | Every commit |
+| 3 | Session logger (`thesis/scripts/log_session.sh`) | End of each session |
+
+**CRITICAL**: Every Cowork/Antigravity session that modifies files MUST call the session logger before ending. See `CLAUDE.md` at project root for instructions.
+
+---
+
 ## Workflow
 
 ```
@@ -71,4 +85,9 @@ User asks to write a section
 
 User asks to log progress
     └── ThesisAgent appends entry to thesis/documentation/project_log.md
+
+Auto-documentation (runs without user intervention)
+    └── Git post-commit hook → appends commit to project_log.md
+    └── Session logger → appends session summary to project_log.md + session_buffer.md
+    └── Docs Agent → alerts on undocumented gaps via Telegram
 ```

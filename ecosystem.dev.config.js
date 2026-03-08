@@ -16,7 +16,7 @@ module.exports = {
     apps: [
         {
             name: 'frontend',
-            cwd: './frontend',
+            cwd: './julia/frontend',
             script: 'npm',
             args: 'run dev',
             restart_delay: 3000,
@@ -28,7 +28,7 @@ module.exports = {
         },
         {
             name: 'bridge',
-            cwd: './bridge',
+            cwd: './julia/bridge',
             script: 'npm',
             args: 'run dev',
             restart_delay: 3000,
@@ -41,7 +41,7 @@ module.exports = {
         },
         {
             name: 'orchestrator',
-            cwd: './orchestrator',
+            cwd: './julia/orchestrator',
             script: 'npm',
             args: 'run dev',
             restart_delay: 5000,
@@ -59,7 +59,7 @@ module.exports = {
             // Exposes claude_task, claude_multimodal_task, claude_code_review,
             // claude_summarize, claude_brainstorm, cowork_status via MCP/HTTP
             name: 'cowork-mcp',
-            cwd: './cowork-mcp',
+            cwd: './julia/cowork-mcp',
             script: 'npm',
             args: 'run dev',
             restart_delay: 3000,
@@ -75,7 +75,7 @@ module.exports = {
         // In dev mode, no cron — run manually with: pm2 trigger sentinel
         {
             name: 'sentinel',
-            cwd: './security-agent',
+            cwd: './meta/agents/security-agent',
             script: './scripts/daily-report.sh',
             interpreter: '/bin/bash',
             autorestart: false,
@@ -89,7 +89,7 @@ module.exports = {
         // Task Manager — In dev mode, same cron schedule
         {
             name: 'task-manager',
-            cwd: './task-manager',
+            cwd: './meta/agents/task-manager',
             script: './scripts/task_check.sh',
             interpreter: '/bin/bash',
             autorestart: false,
@@ -103,7 +103,7 @@ module.exports = {
         // Health Checker — In dev mode, every 15 minutes
         {
             name: 'health-checker',
-            cwd: './health-checker',
+            cwd: './meta/agents/health-checker',
             script: './scripts/health_check.sh',
             interpreter: '/bin/bash',
             autorestart: false,
@@ -117,7 +117,7 @@ module.exports = {
         // Docs Agent — In dev mode, every 12 hours
         {
             name: 'docs-agent',
-            cwd: './docs-agent',
+            cwd: './meta/agents/docs-agent',
             script: './scripts/docs_drift_check.sh',
             interpreter: '/bin/bash',
             autorestart: false,

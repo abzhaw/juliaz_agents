@@ -21,10 +21,20 @@ Ask these questions before writing any files:
 
 ## Agent Directory Convention
 
-Every agent in juliaz_agents gets its own directory at the project root:
+The juliaz_agents repository is organized into three systems. Where a new agent goes depends on its purpose:
+
+| System | Directory | Purpose | Examples |
+|--------|-----------|---------|----------|
+| **Product** | `julia/` | Julia's runtime components (frontend, backend, bridge, orchestrator, cowork-mcp, openclaw) | `julia/orchestrator/`, `julia/bridge/` |
+| **Meta** | `meta/agents/` | Ambient agents that monitor, maintain, and improve the system | `meta/agents/health-checker/`, `meta/agents/security-agent/` |
+| **Thesis** | `thesis/agents/` | Agents related to thesis research | `thesis/agents/thesis-agent/` |
+
+Each agent gets its own directory under the appropriate system:
 
 ```
-agent-name/
+meta/agents/agent-name/     ← for ambient/meta agents
+julia/agent-name/           ← for product agents
+thesis/agents/agent-name/   ← for thesis agents
 ├── SOUL.md          ← REQUIRED: Core identity, values, personality, boundaries
 ├── IDENTITY.md      ← Name, creature type, vibe descriptor, emoji
 ├── TOOLS.md         ← Available tools, environment config, API access
@@ -186,7 +196,7 @@ Add entry to both PM2 config files:
   name: 'agent-name',
   script: 'npm',
   args: 'run dev',  // or 'run start' for production
-  cwd: './agent-name',
+  cwd: './meta/agents/agent-name',
   env: {
     NODE_ENV: 'development',
     // ... agent-specific env vars
@@ -210,6 +220,6 @@ Before considering an agent "done":
 - [ ] If PM2-managed: added to both ecosystem configs
 - [ ] If ambient: HEARTBEAT.md with schedule and health checks
 - [ ] If bridge-connected: tested message send/receive
-- [ ] README.md in `docs/agent_cards/` describing the agent for humans
-- [ ] Added to `docs/agent_system_overview.md`
+- [ ] README.md in `meta/docs/agent_cards/` describing the agent for humans
+- [ ] Added to `meta/docs/agent_system_overview.md`
 - [ ] Main project README.md updated with new component

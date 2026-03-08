@@ -2,7 +2,7 @@
   "mcpServers": {
     "julia-bridge": {
       "command": "node",
-      "args": ["bridge/mcp-stdio.mjs"]
+      "args": ["julia/bridge/mcp-stdio.mjs"]
     }
   }
 }

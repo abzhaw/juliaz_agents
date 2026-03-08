@@ -61,13 +61,13 @@ This gives you the system state in 10 seconds. Read all results before forming a
 │   └── YES → Is it polling for replies?
 │       ├── Check bridge: curl http://localhost:3001/health (look at openclaw heartbeat)
 │       └── If stale heartbeat → OpenClaw relay skill may be broken
-│           └── Check: openclaw/skills/julia-relay/ for issues
+│           └── Check: julia/openclaw/skills/julia-relay/ for issues
 
 "Frontend chat not working"
 ├── Is frontend running? → curl http://localhost:3002
 ├── Is frontend chat endpoint OK? → curl -X POST http://localhost:3002/api/chat
 ├── Check: OPENAI_API_KEY in environment (frontend uses GPT-4o)
-└── Check: frontend/app/api/chat/route.ts for errors
+└── Check: julia/frontend/app/api/chat/route.ts for errors
 
 "Cowork MCP returning errors"
 ├── Is it running? → curl http://localhost:3003/health
@@ -126,7 +126,7 @@ pm2 logs
 ### 3. The Queue Jam
 **Symptom**: Messages pile up in bridge, none get processed.
 **Diagnosis**: `curl http://localhost:3001/health` — check pending count. If messages are in "processing" state, the orchestrator grabbed them but never replied.
-**Fix**: Check orchestrator logs. If it crashed mid-processing, messages stay in "processing" forever. Manual fix: edit `bridge/data/queue.json` and reset status to "pending".
+**Fix**: Check orchestrator logs. If it crashed mid-processing, messages stay in "processing" forever. Manual fix: edit `julia/bridge/data/queue.json` and reset status to "pending".
 
 ### 4. The Memory Leak
 **Symptom**: Service gradually slows down, then crashes after hours/days.
@@ -136,7 +136,7 @@ pm2 logs
 ### 5. The Docker Ghost
 **Symptom**: Backend returns connection errors even though `pm2 list` shows everything "online".
 **Diagnosis**: Docker containers may have stopped (Docker Desktop restart, system reboot).
-**Fix**: `docker ps` to check. If containers are gone: `cd backend && docker compose up -d`.
+**Fix**: `docker ps` to check. If containers are gone: `cd julia/backend && docker compose up -d`.
 
 ### 6. The Fallback Loop
 **Symptom**: Julia responds but much slower than usual, and responses feel different.
@@ -145,8 +145,8 @@ pm2 logs
 
 ### 7. The Hardcoded Path Break
 **Symptom**: Email sending fails, or tools that call external scripts fail.
-**Diagnosis**: The orchestrator has hardcoded paths like `/Users/raphael/Documents/Devs/juliaz_agents/openclaw/skills/email-aberer`.
-**Fix**: If running on a different machine or path, update the paths in `orchestrator/src/tools.ts`.
+**Diagnosis**: The orchestrator may have hardcoded paths that break after directory restructuring.
+**Fix**: If running on a different machine or path, update the paths in `julia/orchestrator/src/tools.ts`.
 
 ## Queue Inspection
 
@@ -154,10 +154,10 @@ The bridge queue is a JSON file. Direct inspection when the API is misbehaving:
 
 ```bash
 # View queue contents
-cat bridge/data/queue.json | python3 -m json.tool
+cat julia/bridge/data/queue.json | python3 -m json.tool
 
 # Count messages by status
-cat bridge/data/queue.json | python3 -c "
+cat julia/bridge/data/queue.json | python3 -c "
 import json, sys
 q = json.load(sys.stdin)
 msgs = q.get('messages', [])
@@ -175,12 +175,12 @@ If messages are stuck in "processing":
 # Read, modify status, write back
 python3 -c "
 import json
-with open('bridge/data/queue.json', 'r') as f:
+with open('julia/bridge/data/queue.json', 'r') as f:
     q = json.load(f)
 for m in q.get('messages', []):
     if m.get('status') == 'processing':
         m['status'] = 'pending'
-with open('bridge/data/queue.json', 'w') as f:
+with open('julia/bridge/data/queue.json', 'w') as f:
     json.dump(q, f, indent=2)
 print('Done — stuck messages reset to pending')
 "
@@ -241,13 +241,13 @@ If you can't fix it with these tools:
 3. **Nuclear option**: Stop everything, rebuild, restart fresh:
    ```bash
    pm2 delete all
-   cd backend && docker compose down
-   cd backend && npm run build
-   cd bridge && npm run build
-   cd orchestrator && npm run build
-   cd cowork-mcp && npm run build
-   cd frontend && npx next build
-   cd backend && docker compose up -d
+   cd julia/backend && docker compose down
+   cd julia/backend && npm run build
+   cd julia/bridge && npm run build
+   cd julia/orchestrator && npm run build
+   cd julia/cowork-mcp && npm run build
+   cd julia/frontend && npx next build
+   cd julia/backend && docker compose up -d
    pm2 start ecosystem.dev.config.js
    openclaw gateway start --force
    ```

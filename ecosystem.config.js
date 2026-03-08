@@ -16,7 +16,7 @@ module.exports = {
     apps: [
         {
             name: 'frontend',
-            cwd: './frontend',
+            cwd: './julia/frontend',
             script: 'npm',
             args: 'run start',
             restart_delay: 3000,
@@ -28,7 +28,7 @@ module.exports = {
         },
         {
             name: 'bridge',
-            cwd: './bridge',
+            cwd: './julia/bridge',
             script: 'npm',
             args: 'run start',
             restart_delay: 3000,
@@ -40,7 +40,7 @@ module.exports = {
         },
         {
             name: 'orchestrator',
-            cwd: './orchestrator',
+            cwd: './julia/orchestrator',
             script: 'npm',
             args: 'run start',
             restart_delay: 5000,
@@ -54,7 +54,7 @@ module.exports = {
         // backend managed by Docker via PM2 — runs in foreground so PM2 can track it
         {
             name: 'backend-docker',
-            cwd: './backend',
+            cwd: './julia/backend',
             script: '/usr/local/bin/docker',
             args: 'compose up',
             restart_delay: 10000,
@@ -69,7 +69,7 @@ module.exports = {
             // Exposes claude_task, claude_multimodal_task, claude_code_review,
             // claude_summarize, claude_brainstorm, cowork_status via MCP/HTTP
             name: 'cowork-mcp',
-            cwd: './cowork-mcp',
+            cwd: './julia/cowork-mcp',
             script: 'npm',
             args: 'run start',
             restart_delay: 3000,
@@ -82,10 +82,10 @@ module.exports = {
             }
         },
         // Sentinel — Daily security scanner (runs at 07:00 every morning)
-        // Produces reports in security-agent/reports/ and sends Telegram summary
+        // Produces reports in meta/agents/security-agent/reports/ and sends Telegram summary
         {
             name: 'sentinel',
-            cwd: './security-agent',
+            cwd: './meta/agents/security-agent',
             script: './scripts/daily-report.sh',
             interpreter: '/bin/bash',
             autorestart: false,       // one-shot script, don't restart after exit
@@ -100,7 +100,7 @@ module.exports = {
         // Detects stale tasks, auto-unblocks resolved dependencies, weekly summary on Mondays
         {
             name: 'task-manager',
-            cwd: './task-manager',
+            cwd: './meta/agents/task-manager',
             script: './scripts/task_check.sh',
             interpreter: '/bin/bash',
             autorestart: false,
@@ -115,7 +115,7 @@ module.exports = {
         // Auto-restarts stopped PM2 processes, alerts on failures, silent when healthy
         {
             name: 'health-checker',
-            cwd: './health-checker',
+            cwd: './meta/agents/health-checker',
             script: './scripts/health_check.sh',
             interpreter: '/bin/bash',
             autorestart: false,
@@ -130,11 +130,27 @@ module.exports = {
         // Compares actual system state against docs/ claims, alerts on discrepancies
         {
             name: 'docs-agent',
-            cwd: './docs-agent',
+            cwd: './meta/agents/docs-agent',
             script: './scripts/docs_drift_check.sh',
             interpreter: '/bin/bash',
             autorestart: false,
             cron_restart: '0 */12 * * *', // every 12 hours
+            watch: false,
+            env: {
+                PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',
+                ...secrets
+            }
+        },
+        // Architecture Agent — Scans system topology every 6 hours
+        // Generates architectureGraph.json for the frontend neural map,
+        // detects structural changes, updates shared-findings with topology data
+        {
+            name: 'architecture-agent',
+            cwd: './meta/agents/architecture-agent',
+            script: './scripts/architecture_scan.sh',
+            interpreter: '/bin/bash',
+            autorestart: false,
+            cron_restart: '0 */6 * * *', // every 6 hours
             watch: false,
             env: {
                 PATH: '/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin',

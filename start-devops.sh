@@ -17,7 +17,7 @@ fi
 
 # Start backend via Docker (PostgreSQL + API on port 3000)
 echo "🐳 Starting backend via Docker..."
-(cd backend && docker compose up -d)
+(cd julia/backend && docker compose up -d)
 
 # Stop existing PM2 processes
 echo "🧹 Cleaning up existing PM2 processes..."
@@ -50,7 +50,7 @@ LAUNCHAGENT_DIR="$HOME/Library/LaunchAgents"
 mkdir -p "$LAUNCHAGENT_DIR" 2>/dev/null || true
 
 # ADHD Agent
-ADHD_SRC="$SCRIPT_DIR/adhd-agent/config/com.juliaz.adhd-agent.plist"
+ADHD_SRC="$SCRIPT_DIR/meta/agents/adhd-agent/config/com.juliaz.adhd-agent.plist"
 if [ -f "$ADHD_SRC" ]; then
     launchctl unload "$LAUNCHAGENT_DIR/com.juliaz.adhd-agent.plist" 2>/dev/null || true
     cp "$ADHD_SRC" "$LAUNCHAGENT_DIR/com.juliaz.adhd-agent.plist"
@@ -59,7 +59,7 @@ if [ -f "$ADHD_SRC" ]; then
 fi
 
 # Start-System (boot trigger)
-SYSTEM_SRC="$SCRIPT_DIR/config/com.juliaz.start-system.plist"
+SYSTEM_SRC="$SCRIPT_DIR/meta/config/com.juliaz.start-system.plist"
 if [ -f "$SYSTEM_SRC" ]; then
     if ! launchctl list 2>/dev/null | grep -q "com.juliaz.start-system"; then
         cp "$SYSTEM_SRC" "$LAUNCHAGENT_DIR/com.juliaz.start-system.plist"

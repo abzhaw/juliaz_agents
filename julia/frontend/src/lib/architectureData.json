@@ -1,0 +1,77 @@
+{
+  "orchestrator": {
+    "description": "Julia-Orchestrator is Julia's central brain. It polls the Bridge for messages, generates replies via Claude Haiku (with GPT-4o fallback), manages memory, and delegates complex tasks to Cowork-MCP."
+  },
+  "openclaw": {
+    "description": "OpenClaw is Julia's Telegram gateway — it receives messages from Telegram, forwards them to the Bridge, and delivers replies back to users."
+  },
+  "bridge": {
+    "description": "The Julia-Bridge (port 3001) is the central message hub. It exposes MCP tools and REST endpoints that connect the Orchestrator, OpenClaw, and Frontend."
+  },
+  "backend": {
+    "description": "REST API running in Docker with Prisma + PostgreSQL. Stores tasks, memories, letters, logs, and usage data for the entire system."
+  },
+  "database": {
+    "description": "PostgreSQL database storing persistent state — tasks, memories, letters, conversation logs, and AI usage metrics."
+  },
+  "user": {
+    "description": "The human operator. Communicates via Telegram (through OpenClaw) or the web Dashboard (through Julia-Web)."
+  },
+  "cowork": {
+    "description": "Cowork-MCP (port 3003) wraps the Anthropic Claude API as MCP tools, giving Julia a powerful second brain for complex reasoning, code review, and multimodal analysis."
+  },
+  "frontend": {
+    "description": "Julia-Web Dashboard (port 3002). Built with React + Vite + Tailwind. Features AI chat (GPT-4o via Vercel AI SDK), DevOps panel, and this architecture view."
+  },
+  "julia-relay": {
+    "description": "OpenClaw skill that forwards Telegram messages to the Julia-Bridge via HTTP POST and polls for replies. The core routing skill that connects Telegram to Julia."
+  },
+  "bash-linux": {
+    "description": "OpenClaw skill providing shell command execution. Allows Julia to run system commands, check service status, and perform operational tasks."
+  },
+  "openclaw-expert": {
+    "description": "Orchestrator skill for managing OpenClaw configuration, troubleshooting connection issues, and understanding the Telegram gateway architecture."
+  },
+  "memory-systems": {
+    "description": "Orchestrator skill for memory extraction and retrieval. Categorizes moments as STORY, FEELING, MOMENT, WISH, or REFLECTION and stores them long-term."
+  },
+  "security-auditor": {
+    "description": "Ambient security agent that scans for vulnerabilities, exposed secrets, and misconfigurations across the multi-agent system."
+  },
+  "postgres-expert": {
+    "description": "Skill for PostgreSQL database management — schema migrations, query optimization, and Prisma ORM guidance."
+  },
+  "ui-ux-pro-max": {
+    "description": "Design skill for frontend UI/UX decisions — layout patterns, accessibility, responsive design, and Tailwind styling."
+  },
+  "exa-search": {
+    "description": "Research skill using Exa semantic search API for finding relevant web content, academic papers, and documentation."
+  },
+  "python-pro": {
+    "description": "Python development skill for data processing, scripting, and building Python-based tools and agents."
+  },
+  "health-checker": {
+    "description": "Ambient agent running via PM2. Monitors service health, detects failures, and reports issues to shared-findings for cross-agent awareness."
+  },
+  "docs-agent": {
+    "description": "Ambient agent that detects undocumented git commits every 12 hours and alerts via Telegram when documentation drifts from code."
+  },
+  "security-agent": {
+    "description": "Ambient security agent generating daily reports, scanning for exposed secrets, and maintaining a security baseline."
+  },
+  "adhd-agent": {
+    "description": "System hygiene agent running every 4 hours via macOS LaunchAgent. Scans for duplicate skills, dead agents, and orphaned configurations."
+  },
+  "architecture-agent": {
+    "description": "Ambient agent that scans the live system topology (PM2 processes, skills, incidents) and generates the dynamic architecture graph."
+  },
+  "pm2": {
+    "description": "PM2 process manager supervising all ambient agents. Handles auto-restart, log rotation, and process monitoring."
+  },
+  "docker": {
+    "description": "Docker containers running the backend REST API and PostgreSQL database. Managed via docker-compose."
+  },
+  "shared-findings": {
+    "description": "Cross-agent communication backbone (incidents.json). Agents write findings here; other agents read them for situational awareness."
+  }
+}
